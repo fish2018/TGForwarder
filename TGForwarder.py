@@ -110,7 +110,7 @@ class TGForwarder:
                 print(f"Unexpected error while fetching replies: {e.__class__.__name__} {e}")
                 break
         return all_replies
-    async def forward_messages(self, chat_name, target_chat_name):
+    async def forward_messages(self, chat_name, target_chat_name, limit):
         global total
         links = self.checkbox['links']
         sizes = self.checkbox['sizes']
@@ -118,7 +118,7 @@ class TGForwarder:
             if try_join:
                 await self.client(JoinChannelRequest(chat_name))
             chat = await self.client.get_entity(chat_name)
-            messages = self.client.iter_messages(chat, limit=self.limit)
+            messages = self.client.iter_messages(chat, limit=limit)
             async for message in messages:
                 self.random_wait(200, 1000)
                 forwards = message.forwards
@@ -310,9 +310,13 @@ class TGForwarder:
         if not os.path.exists(self.download_folder):
             os.makedirs(self.download_folder)
         for chat_name in self.channels_groups_monitor:
+            limit = self.limit
+            if '|' in chat_name:
+                chat_name = chat_name.split('|')[0]
+                limit = chat_name.split('|')[1]
             global total
             total = 0
-            await self.forward_messages(chat_name, self.forward_to_channel)
+            await self.forward_messages(chat_name, self.forward_to_channel,limit)
         await self.client.disconnect()
         if self.fdown:
             shutil.rmtree(self.download_folder)
