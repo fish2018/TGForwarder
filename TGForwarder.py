@@ -312,8 +312,8 @@ class TGForwarder:
         for chat_name in self.channels_groups_monitor:
             limit = self.limit
             if '|' in chat_name:
+                limit = float(chat_name.split('|')[1])
                 chat_name = chat_name.split('|')[0]
-                limit = chat_name.split('|')[1]
             global total
             total = 0
             await self.forward_messages(chat_name, self.forward_to_channel,limit)
