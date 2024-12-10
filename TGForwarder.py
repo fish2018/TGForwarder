@@ -27,7 +27,7 @@ if os.environ.get("HTTP_PROXY"):
 
 class TGForwarder:
     def __init__(self, api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel,
-                 limit, replies_limit, kw, ban, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor):
+                 limit, replies_limit, kw, ban, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor, replaceable_names):
         self.checkbox = {}
         self.checknum = checknum
         # 正则表达式匹配资源链接
@@ -43,6 +43,7 @@ class TGForwarder:
         self.kw = kw
         self.ban = ban
         self.linkvalidtor = linkvalidtor
+        self.replaceable_names = replaceable_names
         self.only_send = only_send
         self.nokwforwards = nokwforwards
         self.fdown = fdown
@@ -64,12 +65,17 @@ class TGForwarder:
     def nocontains(self, s, ban):
         return not any(k in s for k in ban)
 
+    def replace_target_names(self, message):
+        for target in self.replaceable_names:
+            message = message.replace(target, self.forward_to_channel)
+        return message
     async def send(self, message, target_chat_name):
+
         if self.fdown and message.media and isinstance(message.media, MessageMediaPhoto):
             media = await message.download_media(self.download_folder)
-            await self.client.send_file(target_chat_name, media, caption=message.message)
+            await self.client.send_file(target_chat_name, media, caption=self.replace_target_names(message.message))
         else:
-            await self.client.send_message(target_chat_name, message.message)
+            await self.client.send_message(target_chat_name, self.replace_target_names(message.message))
 
     async def get_peer(self,client, channel_name):
         peer = None
@@ -329,6 +335,8 @@ class TGForwarder:
 if __name__ == '__main__':
     channels_groups_monitor = []
     forward_to_channel = 'xxx'
+    # 替换消息中的群组/频道关键字为forward_to_channel
+    replaceable_names = ["yunpanshare", "yunpangroup", "Quark_0", "Quark_Movies", "guaguale115","Aliyundrive_Share_Channel", "alyd_g", "shareAliyun", "aliyundriveShare", "hao115", "Mbox115","NewQuark", "Quark_Share_Group", "QuarkRobot", "memosfanfan_bot", "aliyun_share_bot", "AliYunPanBot"]
     # 监控最近消息数
     limit = 20
     # 监控消息中评论数，有些视频、资源链接被放到评论中
@@ -354,4 +362,4 @@ if __name__ == '__main__':
     # 对网盘链接有效性检测
     linkvalidtor = False
     TGForwarder(api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel, limit, replies_limit, kw,
-                ban, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor).run()
+                ban, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor, replaceable_names).run()
