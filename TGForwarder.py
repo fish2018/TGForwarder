@@ -8,6 +8,7 @@ import json
 import re
 import asyncio
 import urllib.parse
+from datetime import datetime
 from telethon import TelegramClient,functions
 from telethon.tl.types import MessageMediaPhoto, MessageEntityTextUrl
 from telethon.sessions import StringSession
@@ -29,7 +30,7 @@ if os.environ.get("HTTP_PROXY"):
 
 class TGForwarder:
     def __init__(self, api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel,
-                 limit, replies_limit, kw, ban, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor, replacements, channel_match, hyperlink_text):
+                 limit, replies_limit, kw, ban, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor, replacements, channel_match, hyperlink_text, past_years):
         self.checkbox = {}
         self.checknum = checknum
         self.history = 'history.json'
@@ -43,7 +44,14 @@ class TGForwarder:
         self.limit = limit
         self.replies_limit = replies_limit
         self.kw = kw
-        self.ban = ban
+        # 获取当前年份
+        current_year = datetime.now().year
+        # 过滤今年之前的影视资源
+        if not past_years:
+            years_list = [str(year) for year in range(1895, current_year)]
+            self.ban = ban+years_list
+        else:
+            self.ban = ban
         self.hyperlink_text = hyperlink_text
         self.replacements = replacements
         self.channel_match = channel_match
@@ -73,14 +81,15 @@ class TGForwarder:
         replacements (dict): 替换规则字典，键为目标替换词，值为要被替换的词语列表
         """
         # 遍历替换规则
-        for target_word, source_words in self.replacements.items():
-            # 确保source_words是列表
-            if isinstance(source_words, str):
-                source_words = [source_words]
-            # 遍历每个需要替换的词
-            for word in source_words:
-                # 使用替换方法，而不是正则
-                message = message.replace(word, target_word)
+        if self.replacements:
+            for target_word, source_words in self.replacements.items():
+                # 确保source_words是列表
+                if isinstance(source_words, str):
+                    source_words = [source_words]
+                # 遍历每个需要替换的词
+                for word in source_words:
+                    # 使用替换方法，而不是正则
+                    message = message.replace(word, target_word)
         return message
     async def dispatch_channel(self, message, jumpLink=''):
         hit = False
@@ -93,7 +102,7 @@ class TGForwarder:
             await self.send(message, self.forward_to_channel, jumpLink)
     async def send(self, message, target_chat_name, jumpLink=''):
         text = message.message
-        if jumpLink:
+        if jumpLink and self.hyperlink_text:
             for t in self.hyperlink_text:
                 text = text.replace(t, jumpLink)
         if self.fdown and message.media and isinstance(message.media, MessageMediaPhoto):
@@ -160,7 +169,7 @@ class TGForwarder:
             if try_join:
                 await self.client(JoinChannelRequest(chat_name))
             chat = await self.client.get_entity(chat_name)
-            messages = self.client.iter_messages(chat, limit=limit)
+            messages = self.client.iter_messages(chat, limit=limit, reverse=False)
             async for message in messages:
                 jumpLink = await self.redirect_url(message)
                 self.random_wait(200, 1000)
@@ -234,7 +243,28 @@ class TGForwarder:
                                             links.append(link)
                                     else:
                                         print(f'链接已存在，link: {link}')
-
+                # 纯文本消息
+                elif self.contains(message.message, self.kw) and message.message and self.nocontains(message.message, self.ban):
+                    matches = re.findall(self.pattern, message.message)
+                    if matches or jumpLink:
+                        link = jumpLink if jumpLink else matches[0]
+                        if link not in links:
+                            link_ok = True if not self.linkvalidtor else False
+                            if self.linkvalidtor:
+                                result = await self.netdisklinkvalidator(matches)
+                                for r in result:
+                                    if r[1]:
+                                        link_ok = True
+                            if forwards and not self.only_send and link_ok:
+                                await self.client.forward_messages(self.forward_to_channel, message)
+                                total += 1
+                                links.append(link)
+                            elif link_ok:
+                                await self.dispatch_channel(message, jumpLink)
+                                total += 1
+                                links.append(link)
+                        else:
+                            print(f'链接已存在，link: {link}')
             self.checkbox['links'] = links
             self.checkbox['sizes'] = sizes
             print(f"从 {chat_name} 转发资源到 {self.forward_to_channel} total: {total}")
@@ -383,8 +413,7 @@ if __name__ == '__main__':
     # 监控消息中评论数，有些视频、资源链接被放到评论中
     replies_limit = 1
     kw = ['链接', '片名', '名称', '剧名','magnet','drive.uc.cn','caiyun.139.com','cloud.189.cn','pan.quark.cn','115.com','anxia.com','alipan.com','aliyundrive.com','夸克云盘','阿里云盘','磁力链接']
-    ban = ['预告', '预感', 'https://t.me/', '盈利', '即可观看','书籍','电子书','图书','软件','安卓','Android','课程','作品','教程','全书','名著','mobi','epub','pdf','PDF','抽奖','完整版','MP3','WAV','CD','音乐','专辑','资源',
-           '1990','1991','1992','1993','1994','1995','1996','1997','1998','1999','2000','2001','2001','2002','2003','2004','2005','2006','2007','2008','2009','2010','2011','2012','2013','2014','2015','2016','2017','2018','2019','2020','2021','2022','2023']
+    ban = ['预告', '预感', 'https://t.me/', '盈利', '即可观看','书籍','电子书','图书','软件','安卓','Android','课程','作品','教程','全书','名著','mobi','epub','pdf','PDF','PPT','抽奖','完整版','MP3','WAV','CD','音乐','专辑','资源','模板','读物','入门','零基础','常识','电商','小红书','抖音']
     # 消息中的超链接文字，如果存在超链接，会用url替换文字
     hyperlink_text = ["点击查看"]
     # 替换消息中关键字(tag/频道/群组)
@@ -423,5 +452,7 @@ if __name__ == '__main__':
     checknum = 500
     # 对网盘链接有效性检测
     linkvalidtor = False
+    # 允许转发今年之前的资源
+    past_years = False
     TGForwarder(api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel, limit, replies_limit, kw,
-                ban, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor, replacements, channel_match, hyperlink_text).run()
+                ban, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor, replacements, channel_match, hyperlink_text, past_years).run()
