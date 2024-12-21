@@ -12,6 +12,7 @@ from datetime import datetime
 from telethon import TelegramClient,functions
 from telethon.tl.types import MessageMediaPhoto, MessageEntityTextUrl
 from telethon.sessions import StringSession
+from telethon.tl.functions.messages import GetHistoryRequest
 from telethon.tl.functions.channels import JoinChannelRequest
 
 '''
@@ -381,6 +382,50 @@ class TGForwarder:
         for url, result in results:
             print(f"{url} - {'有效' if result else '无效'}")
         return results
+    # 统计今日更新
+    async def daily_forwarded_count(self,target_channel):
+        # 获取今天的日期
+        today = datetime.combine(datetime.now().date(), datetime.min.time())
+        # 调用GetHistoryRequest方法
+        result = await self.client(GetHistoryRequest(
+            peer=target_channel,
+            limit=1,  # 只需要获取一条消息
+            offset_date=today,  # 从今天的0:00开始
+            offset_id=0,  # 从今天的第一条消息开始
+            add_offset=0,
+            max_id=0,
+            min_id=0,
+            hash=0
+        ))
+        # 如果有消息返回，获取第一条消息的ID
+        msg = f'今日截至当前时间共更新【{result.count}】条资源'
+        return msg
+    async def del_channel_forward_count_msg(self):
+        # 删除消息
+        chat_forward_count_msg_id = self.checkbox.get("chat_forward_count_msg_id")
+
+        forward_to_channel_message_id = chat_forward_count_msg_id.get(self.forward_to_channel) if chat_forward_count_msg_id else None
+        if forward_to_channel_message_id:
+            await self.client.delete_messages(self.forward_to_channel, [forward_to_channel_message_id])
+
+        if self.channel_match:
+            for target_channel, _ in self.channel_match.items():
+                target_channel_msg_id = chat_forward_count_msg_id.get(target_channel)
+                await self.client.delete_messages(target_channel, [target_channel_msg_id])
+    async def send_daily_forwarded_count(self):
+        await self.del_channel_forward_count_msg()
+
+        chat_forward_count_msg_id = {}
+        msg = await self.daily_forwarded_count(self.forward_to_channel)
+        sent_message = await self.client.send_message(self.forward_to_channel, msg)
+
+        chat_forward_count_msg_id[self.forward_to_channel] = sent_message.id
+        if self.channel_match:
+            for target_channel, _ in self.channel_match.items():
+                m = await self.daily_forwarded_count(target_channel)
+                sm = await self.client.send_message(target_channel, m)
+                chat_forward_count_msg_id[target_channel] = sm.id
+        self.checkbox["chat_forward_count_msg_id"] = chat_forward_count_msg_id
     async def main(self):
         await self.checkhistory()
         if not os.path.exists(self.download_folder):
@@ -393,6 +438,7 @@ class TGForwarder:
             global total
             total = 0
             await self.forward_messages(chat_name, limit)
+        await self.send_daily_forwarded_count()
         await self.client.disconnect()
         if self.fdown:
             shutil.rmtree(self.download_folder)
@@ -404,16 +450,16 @@ class TGForwarder:
 
 
 if __name__ == '__main__':
-    channels_groups_monitor = ['hao115', 'yunpanshare', 'dianyingshare', 'alyp_4K_Movies', 'Aliyun_4K_Movies',
-                               'shareAliyun','XiangxiuNB', 'NewQuark|60', 'kuakeyun', 'ucpanpan', 'Quark_Movies',
-                               'ydypzyfx','guaguale115', 'tianyi_pd2', 'ucquark', 'alyp_1']
+    channels_groups_monitor = ['hao115', 'yunpanshare', 'dianyingshare', 'alyp_4K_Movies', 'Aliyun_4K_Movies','Quark_Movies',
+                               'XiangxiuNB', 'kuakeyun', 'ucpanpan', 'ydypzyfx', 'tianyi_pd2',
+                               'guaguale115', 'ucquark', 'NewQuark|60', 'alyp_1','shareAliyun']
     forward_to_channel = 'tgsearchers'
     # 监控最近消息数
     limit = 20
     # 监控消息中评论数，有些视频、资源链接被放到评论中
     replies_limit = 1
     kw = ['链接', '片名', '名称', '剧名','magnet','drive.uc.cn','caiyun.139.com','cloud.189.cn','pan.quark.cn','115.com','anxia.com','alipan.com','aliyundrive.com','夸克云盘','阿里云盘','磁力链接']
-    ban = ['预告', '预感', 'https://t.me/', '盈利', '即可观看','书籍','电子书','图书','软件','安卓','Android','课程','作品','教程','全书','名著','mobi','epub','pdf','PDF','PPT','抽奖','完整版','MP3','WAV','CD','音乐','专辑','资源','模板','书中','读物','入门','零基础','常识','电商','小红书','抖音','资料','华为','短剧','纪录片','纪录']
+    ban = ['预告', '预感', 'https://t.me/', '盈利', '即可观看','书籍','电子书','图书','软件','安卓','Android','课程','作品','教程','全书','名著','mobi','epub','pdf','PDF','PPT','抽奖','完整版','文学','有声','txt','MP3','mp3','WAV','CD','音乐','专辑','资源','模板','书中','读物','入门','零基础','常识','干货','电商','小红书','抖音','资料','华为','短剧','纪录片','纪录','学习']
     # 消息中的超链接文字，如果存在超链接，会用url替换文字
     hyperlink_text = ["点击查看"]
     # 替换消息中关键字(tag/频道/群组)
