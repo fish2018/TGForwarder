@@ -8,7 +8,7 @@ import json
 import re
 import asyncio
 import urllib.parse
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from telethon import TelegramClient,functions
 from telethon.tl.types import MessageMediaPhoto, MessageEntityTextUrl
 from telethon.sessions import StringSession
@@ -384,21 +384,34 @@ class TGForwarder:
         return results
     # 统计今日更新
     async def daily_forwarded_count(self,target_channel):
-        # 获取今天的日期
-        today = datetime.combine(datetime.now().date(), datetime.min.time())
-        # 调用GetHistoryRequest方法
+        # 设置中国时区偏移（UTC+8）
+        china_offset = timedelta(hours=8)
+        china_tz = timezone(china_offset)
+        # 获取中国时区的今天凌晨
+        now = datetime.now(china_tz)
+        start_of_day_china = datetime.combine(now.date(), datetime.min.time())
+        start_of_day_china = start_of_day_china.replace(tzinfo=china_tz)
+        # 转换为 UTC 时间
+        start_of_day_utc = start_of_day_china.astimezone(timezone.utc)
+        # 获取今天第一条消息
         result = await self.client(GetHistoryRequest(
             peer=target_channel,
             limit=1,  # 只需要获取一条消息
-            offset_date=today,  # 从今天的0:00开始
-            offset_id=0,  # 从今天的第一条消息开始
+            offset_date=start_of_day_utc,
+            offset_id=0,
             add_offset=0,
             max_id=0,
             min_id=0,
             hash=0
         ))
-        # 如果有消息返回，获取第一条消息的ID
-        msg = f'今日截至当前时间共更新【{result.count}】条资源'
+        # 如果没有消息，返回0
+        if not result.messages:
+            return f'今日共更新【0】条资源'
+        # 获取第一条消息的位置
+        first_message_pos = result.offset_id_offset
+        # 今日消息总数就是从第一条消息到最新消息的距离
+        today_count = first_message_pos + 1
+        msg = f'今日共更新【{today_count}】条资源'
         return msg
     async def del_channel_forward_count_msg(self):
         # 删除消息
@@ -495,7 +508,7 @@ if __name__ == '__main__':
     # 默认不开启代理
     proxy = None
     # 检测自己频道最近100条消息是否已经包含该资源
-    checknum = 100
+    checknum = 500
     # 对网盘链接有效性检测
     linkvalidtor = False
     # 允许转发今年之前的资源
