@@ -431,6 +431,9 @@ class TGForwarder:
         chat_forward_count_msg_id = {}
         msg = await self.daily_forwarded_count(self.forward_to_channel)
         sent_message = await self.client.send_message(self.forward_to_channel, msg)
+        # 置顶消息
+        await self.client.pin_message(self.forward_to_channel, sent_message.id)
+        await self.client.delete_messages(self.forward_to_channel, [sent_message.id + 1])
 
         chat_forward_count_msg_id[self.forward_to_channel] = sent_message.id
         if self.channel_match:
@@ -438,6 +441,8 @@ class TGForwarder:
                 m = await self.daily_forwarded_count(target_channel)
                 sm = await self.client.send_message(target_channel, m)
                 chat_forward_count_msg_id[target_channel] = sm.id
+                await self.client.pin_message(target_channel, sm.id)
+                await self.client.delete_messages(target_channel, [sm.id+1])
         self.checkbox["chat_forward_count_msg_id"] = chat_forward_count_msg_id
     async def main(self):
         await self.checkhistory()
@@ -472,7 +477,8 @@ if __name__ == '__main__':
     # 监控消息中评论数，有些视频、资源链接被放到评论中
     replies_limit = 1
     kw = ['链接', '片名', '名称', '剧名','magnet','drive.uc.cn','caiyun.139.com','cloud.189.cn','pan.quark.cn','115.com','anxia.com','alipan.com','aliyundrive.com','夸克云盘','阿里云盘','磁力链接']
-    ban = ['预告', '预感', 'https://t.me/', '盈利', '即可观看','书籍','电子书','图书','软件','安卓','Android','课程','作品','教程','全书','名著','mobi','epub','pdf','PDF','PPT','抽奖','完整版','文学','有声','txt','MP3','mp3','WAV','CD','音乐','专辑','资源','模板','书中','读物','入门','零基础','常识','干货','电商','小红书','抖音','资料','华为','短剧','纪录片','纪录','学习']
+    ban = ['预告', '预感', 'https://t.me/', '盈利', '即可观看','书籍','电子书','图书','丛书','软件','安卓','Android','课程','作品','教程','教学','全书','名著','mobi','epub','pdf','PDF','PPT','抽奖','完整版','文学','写作','所著',
+           '有声','txt','MP3','mp3','WAV','CD','音乐','专辑','资源','模板','书中','读物','入门','零基础','常识','干货','电商','小红书','抖音','资料','华为','短剧','纪录片','记录片','纪录','纪实','学习','付费','小学','初中','高中','数学','语文']
     # 消息中的超链接文字，如果存在超链接，会用url替换文字
     hyperlink_text = ["点击查看"]
     # 替换消息中关键字(tag/频道/群组)
