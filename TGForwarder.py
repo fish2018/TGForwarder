@@ -94,13 +94,18 @@ class TGForwarder:
         return message
     async def dispatch_channel(self, message, jumpLink=''):
         hit = False
-        if self.channel_match:
-            for target_channel, kw in self.channel_match.items():
-                if self.contains(message.message, kw):
-                    await self.send(message,target_channel, jumpLink)
-                    hit = True
-        if not hit:
-            await self.send(message, self.forward_to_channel, jumpLink)
+        if self.channel_match:    
+            for rule in self.channel_match:
+                if rule.get('include'):
+                    if not self.contains(message.message, rule['include']):
+                        continue
+                if rule.get('exclude'):
+                    if not self.nocontains(message.message, rule['exclude']):
+                        continue
+                await self.send(message, rule['target'], jumpLink)
+                hit = True
+            if not hit:
+                await self.send(message, self.forward_to_channel, jumpLink)
     async def send(self, message, target_chat_name, jumpLink=''):
         text = message.message
         if jumpLink and self.hyperlink_text:
@@ -507,18 +512,15 @@ if __name__ == '__main__':
         "动漫": ["国漫", "日漫"],
         "连续剧": ["国剧", "韩剧", "泰剧", "日剧"]
     }
-    # 匹配关键字转发到不同频道/群组，不分组设置channel_match={}即可
-    # channel_match = {
-    #     "tg115": ["115.com","anxia.com"],
-    #     "tgali": ["www.alipan.com","aliyundrive.com"],
-    #     "tguc": ["drive.uc.cn"],
-    #     "tgquark": ["pan.quark.cn"],
-    #     "tg139": ["caiyun.139.com"],
-    #     "tg189": ["cloud.189.cn"],
-    #     "tgmagnet": ["magnet"],
-    #     "tgmusic": ["音乐","专辑","MP3","WAV","CD"]
-    # }
-    channel_match = {}
+    # 匹配关键字分发到不同频道/群组，不需要分发直接设置channel_match=[]即可
+    # channel_match = [
+    #     {
+    #         'include': ['pan.quark.cn'],  # 包含这些关键词
+    #         'exclude': ['无损音乐','音乐','动漫','动画','国漫','日漫','美漫','漫画','真人秀','综艺','韩综'],  # 排除这些关键词
+    #         'target': 'kuake'  # 转发到目标频道/群组
+    #     }
+    # ]
+    channel_match = []
     # 尝试加入公共群组频道，无法过验证
     try_join = False
     # 消息中不含关键词图文，但有些资源被放到消息评论中，如果需要监控评论中资源，需要开启，否则建议关闭
