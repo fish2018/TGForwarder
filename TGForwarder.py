@@ -31,7 +31,7 @@ if os.environ.get("HTTP_PROXY"):
 
 class TGForwarder:
     def __init__(self, api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel,
-                 limit, replies_limit, kw, ban, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor, replacements, channel_match, hyperlink_text, past_years):
+                 limit, replies_limit, include, exclude, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor, replacements, channel_match, hyperlink_text, past_years):
         self.checkbox = {}
         self.checknum = checknum
         self.history = 'history.json'
@@ -44,15 +44,15 @@ class TGForwarder:
         self.forward_to_channel = forward_to_channel
         self.limit = limit
         self.replies_limit = replies_limit
-        self.kw = kw
+        self.include = include
         # 获取当前年份
         current_year = datetime.now().year
         # 过滤今年之前的影视资源
         if not past_years:
             years_list = [str(year) for year in range(1895, current_year)]
-            self.ban = ban+years_list
+            self.exclude = exclude+years_list
         else:
-            self.ban = ban
+            self.exclude = exclude
         self.hyperlink_text = hyperlink_text
         self.replacements = replacements
         self.channel_match = channel_match
@@ -70,10 +70,10 @@ class TGForwarder:
         max_sec = max_ms / 1000
         wait_time = random.uniform(min_sec, max_sec)
         time.sleep(wait_time)
-    def contains(self, s, kw):
-        return any(k in s for k in kw)
-    def nocontains(self, s, ban):
-        return not any(k in s for k in ban)
+    def contains(self, s, include):
+        return any(k in s for k in include)
+    def nocontains(self, s, exclude):
+        return not any(k in s for k in exclude)
     def replace_targets(self, message: str):
         """
         根据用户自定义的替换规则替换文本内容
@@ -374,7 +374,7 @@ class TGForwarder:
                 forwards = message.forwards
                 if message.media:
                     # 视频
-                    if hasattr(message.document, 'mime_type') and self.contains(message.document.mime_type,'video') and self.nocontains(message.message, self.ban):
+                    if hasattr(message.document, 'mime_type') and self.contains(message.document.mime_type,'video') and self.nocontains(message.message, self.exclude):
                         if forwards:
                             size = message.document.size
                             if size not in sizes:
@@ -384,7 +384,7 @@ class TGForwarder:
                             else:
                                 print(f'视频已经存在，size: {size}')
                     # 图文(匹配关键词)
-                    elif self.contains(message.message, self.kw) and message.message and self.nocontains(message.message, self.ban):
+                    elif self.contains(message.message, self.include) and message.message and self.nocontains(message.message, self.exclude):
                         matches = re.findall(self.pattern, message.message)
                         if matches or jumpLink:
                             link = jumpLink if jumpLink else matches[0]
@@ -406,12 +406,12 @@ class TGForwarder:
                             else:
                                 print(f'链接已存在，link: {link}')
                     # 图文(不含关键词，默认nokwforwards=False)，资源被放到评论中
-                    elif self.nokwforwards and message.message and self.nocontains(message.message, self.ban):
+                    elif self.nokwforwards and message.message and self.nocontains(message.message, self.exclude):
                         replies = await self.get_all_replies(chat_name,message)
                         replies = replies[-self.replies_limit:]
                         for r in replies:
                             # 评论中的视频
-                            if hasattr(r.document, 'mime_type') and self.contains(r.document.mime_type,'video') and self.nocontains(r.message, self.ban):
+                            if hasattr(r.document, 'mime_type') and self.contains(r.document.mime_type,'video') and self.nocontains(r.message, self.exclude):
                                 size = r.document.size
                                 if size not in sizes:
                                     await self.client.forward_messages(self.forward_to_channel, r)
@@ -420,7 +420,7 @@ class TGForwarder:
                                 else:
                                     print(f'视频已经存在，size: {size}')
                             # 评论中链接关键词
-                            elif self.contains(r.message, self.kw) and r.message and self.nocontains(r.message, self.ban):
+                            elif self.contains(r.message, self.include) and r.message and self.nocontains(r.message, self.exclude):
                                 matches = re.findall(self.pattern, r.message)
                                 if matches:
                                     link = matches[0]
@@ -443,7 +443,7 @@ class TGForwarder:
                                         print(f'链接已存在，link: {link}')
                 # 纯文本消息
                 elif message.message:
-                    if self.contains(message.message, self.kw) and self.nocontains(message.message, self.ban):
+                    if self.contains(message.message, self.include) and self.nocontains(message.message, self.exclude):
                         matches = re.findall(self.pattern, message.message)
                         if matches or jumpLink:
                             link = jumpLink if jumpLink else matches[0]
@@ -501,8 +501,8 @@ if __name__ == '__main__':
     limit = 20
     # 监控消息中评论数，有些视频、资源链接被放到评论中
     replies_limit = 1
-    kw = ['链接', '片名', '名称', '剧名','magnet','drive.uc.cn','caiyun.139.com','cloud.189.cn','pan.quark.cn','115.com','anxia.com','alipan.com','aliyundrive.com','夸克云盘','阿里云盘','磁力链接']
-    ban = ['预告', '预感', '盈利', '即可观看','书籍','电子书','图书','丛书','软件','安卓','Android','课程','作品','教程','教学','全书','名著','mobi','epub','pdf','PDF','PPT','抽奖','完整版','文学','写作','学习',
+    include = ['链接', '片名', '名称', '剧名','magnet','drive.uc.cn','caiyun.139.com','cloud.189.cn','pan.quark.cn','115.com','anxia.com','alipan.com','aliyundrive.com','夸克云盘','阿里云盘','磁力链接']
+    exclude = ['预告', '预感', '盈利', '即可观看','书籍','电子书','图书','丛书','软件','安卓','Android','课程','作品','教程','教学','全书','名著','mobi','epub','pdf','PDF','PPT','抽奖','完整版','文学','写作',
            '有声','txt','MP3','mp3','WAV','CD','音乐','专辑','模板','书中','读物','入门','零基础','常识','干货','电商','小红书','抖音','资料','华为','短剧','纪录片','记录片','纪录','纪实','学习','付费','小学','初中','高中','数学','语文']
     # 消息中的超链接文字，如果存在超链接，会用url替换文字
     hyperlink_text = ["点击查看","【夸克网盘】点击获取","【百度网盘】点击获取","【阿里云盘】点击获取"]
@@ -541,5 +541,5 @@ if __name__ == '__main__':
     linkvalidtor = False
     # 允许转发今年之前的资源
     past_years = False
-    TGForwarder(api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel, limit, replies_limit, kw,
-                ban, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor, replacements, channel_match, hyperlink_text, past_years).run()
+    TGForwarder(api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel, limit, replies_limit, include,
+                exclude, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor, replacements, channel_match, hyperlink_text, past_years).run()
