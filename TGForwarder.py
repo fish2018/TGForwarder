@@ -168,7 +168,7 @@ class TGForwarder:
                 links = self.checkbox.get('links')
                 sizes = self.checkbox.get('sizes')
         else:
-            self.checknum = 1000
+            self.checknum = 500
 
         chat = await self.client.get_entity(self.forward_to_channel)
         messages = self.client.iter_messages(chat, limit=self.checknum)
@@ -181,8 +181,8 @@ class TGForwarder:
                 matches = re.findall(self.pattern, message.message)
                 for match in matches:
                     links.append(match)
-        self.checkbox['links'] = list(set(links))[:1000]
-        self.checkbox['sizes'] = list(set(sizes))[:1000]
+        self.checkbox['links'] = list(set(links))[:self.checknum]
+        self.checkbox['sizes'] = list(set(sizes))[:self.checknum]
     async def check_aliyun(self,share_id):
         api_url = "https://api.aliyundrive.com/adrive/v3/share_link/get_share_by_anonymous"
         headers = {"Content-Type": "application/json"}
@@ -538,8 +538,8 @@ if __name__ == '__main__':
     string_session = 'xxx'
     # 默认不开启代理
     proxy = None
-    # 检测自己频道最近100条消息是否已经包含该资源
-    checknum = 100
+    # 检测自己频道最近500条消息是否已经包含该资源
+    checknum = 500
     # 对网盘链接有效性检测
     linkvalidtor = False
     # 允许转发今年之前的资源
