@@ -106,6 +106,8 @@ class TGForwarder:
                 hit = True
             if not hit:
                 await self.send(message, self.forward_to_channel, jumpLink)
+        else:
+            await self.send(message, self.forward_to_channel, jumpLink)
     async def send(self, message, target_chat_name, jumpLink=''):
         text = message.message
         if jumpLink and self.hyperlink_text:
@@ -166,7 +168,7 @@ class TGForwarder:
                 links = self.checkbox.get('links')
                 sizes = self.checkbox.get('sizes')
         else:
-            self.checknum = 5000
+            self.checknum = 1000
 
         chat = await self.client.get_entity(self.forward_to_channel)
         messages = self.client.iter_messages(chat, limit=self.checknum)
@@ -179,8 +181,8 @@ class TGForwarder:
                 matches = re.findall(self.pattern, message.message)
                 for match in matches:
                     links.append(match)
-        self.checkbox['links'] = list(set(links))
-        self.checkbox['sizes'] = list(set(sizes))
+        self.checkbox['links'] = list(set(links))[:1000]
+        self.checkbox['sizes'] = list(set(sizes))[:1000]
     async def check_aliyun(self,share_id):
         api_url = "https://api.aliyundrive.com/adrive/v3/share_link/get_share_by_anonymous"
         headers = {"Content-Type": "application/json"}
@@ -466,9 +468,9 @@ class TGForwarder:
                                 print(f'链接已存在，link: {link}')
             self.checkbox['links'] = links
             self.checkbox['sizes'] = sizes
-            print(f"从 {chat_name} 转发资源到 {self.forward_to_channel} total: {total}")
+            print(f"从 {chat_name} 转发资源 成功: {total}")
         except Exception as e:
-            print(f"从 {chat_name} 转发资源到 {self.forward_to_channel} 失败: {e}")
+            print(f"从 {chat_name} 转发资源 失败: {e}")
     async def main(self):
         await self.checkhistory()
         if not os.path.exists(self.download_folder):
@@ -496,14 +498,15 @@ if __name__ == '__main__':
     channels_groups_monitor = ['hao115', 'yunpanshare', 'dianyingshare', 'alyp_4K_Movies', 'Aliyun_4K_Movies','Quark_Movies',
                                'XiangxiuNB', 'kuakeyun', 'ucpanpan', 'ydypzyfx', 'tianyi_pd2',
                                'guaguale115', 'ucquark', 'NewQuark|60', 'alyp_1','shareAliyun']
+    # channels_groups_monitor = ['hao115']
     forward_to_channel = 'tgsearchers'
     # 监控最近消息数
     limit = 20
     # 监控消息中评论数，有些视频、资源链接被放到评论中
     replies_limit = 1
     include = ['链接', '片名', '名称', '剧名','magnet','drive.uc.cn','caiyun.139.com','cloud.189.cn','pan.quark.cn','115.com','anxia.com','alipan.com','aliyundrive.com','夸克云盘','阿里云盘','磁力链接']
-    exclude = ['预告', '预感', '盈利', '即可观看','书籍','电子书','图书','丛书','软件','安卓','Android','课程','作品','教程','教学','全书','名著','mobi','epub','pdf','PDF','PPT','抽奖','完整版','文学','写作',
-           '有声','txt','MP3','mp3','WAV','CD','音乐','专辑','模板','书中','读物','入门','零基础','常识','干货','电商','小红书','抖音','资料','华为','短剧','纪录片','记录片','纪录','纪实','学习','付费','小学','初中','高中','数学','语文']
+    exclude = ['预告', '预感', '盈利', '即可观看','书籍','电子书','图书','丛书','软件','安卓','Android','课程','作品','教程','教学','全书','名著','mobi','epub','pdf','PDF','PPT','抽奖','完整版','文学','写作','节课',
+           '有声','txt','MP3','mp3','WAV','CD','音乐','专辑','模板','书中','读物','入门','零基础','常识','干货','电商','小红书','抖音','资料','华为','短剧','纪录片','记录片','纪录','纪实','学习','付费','小学','初中','数学','语文']
     # 消息中的超链接文字，如果存在超链接，会用url替换文字
     hyperlink_text = ["点击查看","【夸克网盘】点击获取","【百度网盘】点击获取","【阿里云盘】点击获取"]
     # 替换消息中关键字(tag/频道/群组)
@@ -536,7 +539,7 @@ if __name__ == '__main__':
     # 默认不开启代理
     proxy = None
     # 检测自己频道最近100条消息是否已经包含该资源
-    checknum = 500
+    checknum = 100
     # 对网盘链接有效性检测
     linkvalidtor = False
     # 允许转发今年之前的资源
