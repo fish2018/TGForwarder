@@ -94,7 +94,7 @@ class TGForwarder:
         return message
     async def dispatch_channel(self, message, jumpLink=''):
         hit = False
-        if self.channel_match:    
+        if self.channel_match:
             for rule in self.channel_match:
                 if rule.get('include'):
                     if not self.contains(message.message, rule['include']):
@@ -304,9 +304,9 @@ class TGForwarder:
             await self.client.delete_messages(self.forward_to_channel, [forward_to_channel_message_id])
 
         if self.channel_match:
-            for target_channel, _ in self.channel_match.items():
-                target_channel_msg_id = chat_forward_count_msg_id.get(target_channel)
-                await self.client.delete_messages(target_channel, [target_channel_msg_id])
+            for rule in self.channel_match:
+                target_channel_msg_id = chat_forward_count_msg_id.get(rule['target'])
+                await self.client.delete_messages(rule['target'], [target_channel_msg_id])
     async def send_daily_forwarded_count(self):
         await self.del_channel_forward_count_msg()
 
@@ -319,12 +319,12 @@ class TGForwarder:
 
         chat_forward_count_msg_id[self.forward_to_channel] = sent_message.id
         if self.channel_match:
-            for target_channel, _ in self.channel_match.items():
-                m = await self.daily_forwarded_count(target_channel)
-                sm = await self.client.send_message(target_channel, m)
-                chat_forward_count_msg_id[target_channel] = sm.id
-                await self.client.pin_message(target_channel, sm.id)
-                await self.client.delete_messages(target_channel, [sm.id+1])
+            for rule in self.channel_match:
+                m = await self.daily_forwarded_count(rule['target'])
+                sm = await self.client.send_message(rule['target'], m)
+                chat_forward_count_msg_id[rule['target']] = sm.id
+                await self.client.pin_message(rule['target'], sm.id)
+                await self.client.delete_messages(rule['target'], [sm.id+1])
         self.checkbox["chat_forward_count_msg_id"] = chat_forward_count_msg_id
     async def redirect_url(self, message):
         link = []
@@ -502,7 +502,7 @@ if __name__ == '__main__':
     # 监控消息中评论数，有些视频、资源链接被放到评论中
     replies_limit = 1
     kw = ['链接', '片名', '名称', '剧名','magnet','drive.uc.cn','caiyun.139.com','cloud.189.cn','pan.quark.cn','115.com','anxia.com','alipan.com','aliyundrive.com','夸克云盘','阿里云盘','磁力链接']
-    ban = ['预告', '预感', '盈利', '即可观看','书籍','电子书','图书','丛书','软件','安卓','Android','课程','作品','教程','教学','全书','名著','mobi','epub','pdf','PDF','PPT','抽奖','完整版','文学','写作',
+    ban = ['预告', '预感', '盈利', '即可观看','书籍','电子书','图书','丛书','软件','安卓','Android','课程','作品','教程','教学','全书','名著','mobi','epub','pdf','PDF','PPT','抽奖','完整版','文学','写作','学习',
            '有声','txt','MP3','mp3','WAV','CD','音乐','专辑','模板','书中','读物','入门','零基础','常识','干货','电商','小红书','抖音','资料','华为','短剧','纪录片','记录片','纪录','纪实','学习','付费','小学','初中','高中','数学','语文']
     # 消息中的超链接文字，如果存在超链接，会用url替换文字
     hyperlink_text = ["点击查看","【夸克网盘】点击获取","【百度网盘】点击获取","【阿里云盘】点击获取"]
