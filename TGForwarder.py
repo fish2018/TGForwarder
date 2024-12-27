@@ -498,7 +498,6 @@ if __name__ == '__main__':
     channels_groups_monitor = ['hao115', 'yunpanshare', 'dianyingshare', 'alyp_4K_Movies', 'Aliyun_4K_Movies','Quark_Movies',
                                'XiangxiuNB', 'kuakeyun', 'ucpanpan', 'ydypzyfx', 'tianyi_pd2',
                                'guaguale115', 'ucquark', 'NewQuark|60', 'alyp_1','shareAliyun']
-    # channels_groups_monitor = ['hao115']
     forward_to_channel = 'tgsearchers'
     # 监控最近消息数
     limit = 20
