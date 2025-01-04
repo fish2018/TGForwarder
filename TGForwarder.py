@@ -166,23 +166,21 @@ class TGForwarder:
         if os.path.exists(self.history):
             with open(self.history, 'r', encoding='utf-8') as f:
                 self.checkbox = json.loads(f.read())
-                links = self.checkbox.get('links')
-                sizes = self.checkbox.get('sizes')
                 self.today_count = self.checkbox.get('today_count') if self.checkbox.get('today_count') else self.checknum
-
-        chat = await self.client.get_entity(self.forward_to_channel)
-        messages = self.client.iter_messages(chat, limit=self.checknum)
-        async for message in messages:
-            # 视频类型对比大小
-            if hasattr(message.document, 'mime_type'):
-                sizes.append(message.document.size)
-            # 匹配出链接
-            if message.message:
-                matches = re.findall(self.pattern, message.message)
-                for match in matches:
-                    links.append(match)
-        self.checkbox['links'] = list(set(links))[:self.today_count+self.checknum]
-        self.checkbox['sizes'] = list(set(sizes))[:self.today_count+self.checknum]
+        else:
+            chat = await self.client.get_entity(self.forward_to_channel)
+            messages = self.client.iter_messages(chat, limit=self.checknum)
+            async for message in messages:
+                # 视频类型对比大小
+                if hasattr(message.document, 'mime_type'):
+                    sizes.append(message.document.size)
+                # 匹配出链接
+                if message.message:
+                    matches = re.findall(self.pattern, message.message)
+                    for match in matches:
+                        links.append(match)
+            self.checkbox['links'] = list(set(links))
+            self.checkbox['sizes'] = list(set(sizes))
     async def check_aliyun(self,share_id):
         api_url = "https://api.aliyundrive.com/adrive/v3/share_link/get_share_by_anonymous"
         headers = {"Content-Type": "application/json"}
@@ -364,8 +362,10 @@ class TGForwarder:
         return link
     async def forward_messages(self, chat_name, limit):
         global total
-        links = self.checkbox['links']
-        sizes = self.checkbox['sizes']
+        checknum = self.checknum if self.today_count < self.checknum else self.today_count
+        print(f'本次检测【{chat_name}】最近【{checknum}】条历史消息进行去重')
+        links = self.checkbox['links'][:checknum]
+        sizes = self.checkbox['sizes'][:checknum]
         try:
             if try_join:
                 await self.client(JoinChannelRequest(chat_name))
@@ -506,7 +506,7 @@ if __name__ == '__main__':
     replies_limit = 1
     include = ['链接', '片名', '名称', '剧名','magnet','drive.uc.cn','caiyun.139.com','cloud.189.cn','pan.quark.cn','115.com','anxia.com','alipan.com','aliyundrive.com','夸克云盘','阿里云盘','磁力链接']
     exclude = ['预告', '预感', '盈利', '即可观看','书籍','电子书','图书','丛书','软件','安卓','Android','课程','作品','教程','教学','全书','名著','mobi','epub','pdf','PDF','PPT','抽奖','完整版','文学','写作','节课','套装',
-           '有声','txt','MP3','mp3','WAV','CD','音乐','专辑','模板','书中','读物','入门','零基础','常识','干货','电商','小红书','抖音','资料','华为','短剧','纪录片','记录片','纪录','纪实','学习','付费','小学','初中','数学','语文']
+           'txt','MP3','mp3','WAV','CD','音乐','专辑','模板','书中','读物','入门','零基础','常识','干货','电商','小红书','抖音','资料','华为','短剧','纪录片','记录片','纪录','纪实','学习','付费','小学','初中','数学','语文']
     # 消息中的超链接文字，如果存在超链接，会用url替换文字
     hyperlink_text = ["点击查看","【夸克网盘】点击获取","【百度网盘】点击获取","【阿里云盘】点击获取"]
     # 替换消息中关键字(tag/频道/群组)
@@ -538,7 +538,7 @@ if __name__ == '__main__':
     string_session = 'xxx'
     # 默认不开启代理
     proxy = None
-    # 检测自己频道最近500条消息是否已经包含该资源
+    # 检测自己频道最近500条消息是否已经包含该资源，当日转发消息数大于500时，检测当日转发总数
     checknum = 500
     # 对网盘链接有效性检测
     linkvalidtor = False
