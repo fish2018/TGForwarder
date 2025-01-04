@@ -467,8 +467,8 @@ class TGForwarder:
                                     links.append(link)
                             else:
                                 print(f'链接已存在，link: {link}')
-            self.checkbox['links'] = links
-            self.checkbox['sizes'] = sizes
+            self.checkbox['links'] = list(set(links+self.checkbox['links']))
+            self.checkbox['sizes'] = list(set(sizes+self.checkbox['sizes']))
             print(f"从 {chat_name} 转发资源 成功: {total}")
         except Exception as e:
             print(f"从 {chat_name} 转发资源 失败: {e}")
@@ -538,7 +538,7 @@ if __name__ == '__main__':
     string_session = 'xxx'
     # 默认不开启代理
     proxy = None
-    # 检测自己频道最近500条消息是否已经包含该资源，当日转发消息数大于500时，检测当日转发总数
+    # 检测自己频道最近500条消息是否已经包含该资源
     checknum = 500
     # 对网盘链接有效性检测
     linkvalidtor = False
