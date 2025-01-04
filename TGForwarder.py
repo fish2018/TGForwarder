@@ -34,6 +34,7 @@ class TGForwarder:
                  limit, replies_limit, include, exclude, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor, replacements, channel_match, hyperlink_text, past_years):
         self.checkbox = {}
         self.checknum = checknum
+        self.today_count = checknum
         self.history = 'history.json'
         # 正则表达式匹配资源链接
         self.pattern = r"(?:链接：\s*)?((?!https?://t\.me)https?://[^\s'】\n]+(?=\n|$)|magnet:\?xt=urn:btih:[a-zA-Z0-9]+)"
@@ -46,7 +47,7 @@ class TGForwarder:
         self.replies_limit = replies_limit
         self.include = include
         # 获取当前年份
-        current_year = datetime.now().year
+        current_year = datetime.now().year - 1
         # 过滤今年之前的影视资源
         if not past_years:
             years_list = [str(year) for year in range(1895, current_year)]
@@ -167,6 +168,7 @@ class TGForwarder:
                 self.checkbox = json.loads(f.read())
                 links = self.checkbox.get('links')
                 sizes = self.checkbox.get('sizes')
+                self.today_count = self.checkbox.get('today_count') if self.checkbox.get('today_count') else self.checknum
 
         chat = await self.client.get_entity(self.forward_to_channel)
         messages = self.client.iter_messages(chat, limit=self.checknum)
@@ -179,8 +181,8 @@ class TGForwarder:
                 matches = re.findall(self.pattern, message.message)
                 for match in matches:
                     links.append(match)
-        self.checkbox['links'] = list(set(links))[:1000]
-        self.checkbox['sizes'] = list(set(sizes))[:1000]
+        self.checkbox['links'] = list(set(links))[:self.today_count+self.checknum]
+        self.checkbox['sizes'] = list(set(sizes))[:self.today_count+self.checknum]
     async def check_aliyun(self,share_id):
         api_url = "https://api.aliyundrive.com/adrive/v3/share_link/get_share_by_anonymous"
         headers = {"Content-Type": "application/json"}
@@ -292,7 +294,8 @@ class TGForwarder:
         # 获取第一条消息的位置
         first_message_pos = result.offset_id_offset
         # 今日消息总数就是从第一条消息到最新消息的距离
-        today_count = first_message_pos if first_message_pos else 0
+        today_count = first_message_pos - 1 if first_message_pos else 0
+        self.checkbox["today_count"] = today_count
         msg = f'今日共更新【{today_count}】条资源'
         return msg
     async def del_channel_forward_count_msg(self):
