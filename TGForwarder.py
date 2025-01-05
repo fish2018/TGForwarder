@@ -14,6 +14,7 @@ from telethon.tl.types import MessageMediaPhoto, MessageEntityTextUrl
 from telethon.sessions import StringSession
 from telethon.tl.functions.messages import GetHistoryRequest
 from telethon.tl.functions.channels import JoinChannelRequest
+from collections import deque
 
 '''
 代理参数说明:
@@ -167,20 +168,20 @@ class TGForwarder:
             with open(self.history, 'r', encoding='utf-8') as f:
                 self.checkbox = json.loads(f.read())
                 self.today_count = self.checkbox.get('today_count') if self.checkbox.get('today_count') else self.checknum
-        else:
-            chat = await self.client.get_entity(self.forward_to_channel)
-            messages = self.client.iter_messages(chat, limit=self.checknum)
-            async for message in messages:
-                # 视频类型对比大小
-                if hasattr(message.document, 'mime_type'):
-                    sizes.append(message.document.size)
-                # 匹配出链接
-                if message.message:
-                    matches = re.findall(self.pattern, message.message)
-                    for match in matches:
-                        links.append(match)
-            self.checkbox['links'] = list(set(links))
-            self.checkbox['sizes'] = list(set(sizes))
+        limit = self.checknum if self.today_count < self.checknum else self.today_count
+        chat = await self.client.get_entity(self.forward_to_channel)
+        messages = self.client.iter_messages(chat, limit=limit)
+        async for message in messages:
+            # 视频类型对比大小
+            if hasattr(message.document, 'mime_type'):
+                sizes.append(message.document.size)
+            # 匹配出链接
+            if message.message:
+                matches = re.findall(self.pattern, message.message)
+                for match in matches:
+                    links.append(match)
+        self.checkbox['links'] = list(set(links))
+        self.checkbox['sizes'] = list(set(sizes))
     async def check_aliyun(self,share_id):
         api_url = "https://api.aliyundrive.com/adrive/v3/share_link/get_share_by_anonymous"
         headers = {"Content-Type": "application/json"}
@@ -287,12 +288,12 @@ class TGForwarder:
             hash=0
         ))
         # 如果没有消息，返回0
-        if not result.messages:
-            return f'今日共更新【0】条资源'
+        #if not result.messages:
+        #    return f'今日共更新【0】条资源'
         # 获取第一条消息的位置
         first_message_pos = result.offset_id_offset
         # 今日消息总数就是从第一条消息到最新消息的距离
-        today_count = first_message_pos - 1 if first_message_pos else 0
+        today_count = first_message_pos if first_message_pos else 0
         self.checkbox["today_count"] = today_count
         msg = f'今日共更新【{today_count}】条资源'
         return msg
@@ -360,18 +361,31 @@ class TGForwarder:
         links = re.findall(r'(https?://[^\s]+)', message)
         link = links[0] if links else ''
         return link
+
+    async def reverse_async_iter(self, async_iter, limit):
+        # 使用 deque 存储消息，方便从尾部添加
+        buffer = deque(maxlen=limit)
+
+        # 将消息填充到 buffer 中
+        async for message in async_iter:
+            buffer.append(message)
+
+        # 从 buffer 的尾部开始逆序迭代
+        for message in reversed(buffer):
+            yield message
     async def forward_messages(self, chat_name, limit):
         global total
         checknum = self.checknum if self.today_count < self.checknum else self.today_count
-        print(f'本次检测【{chat_name}】最近【{checknum}】条历史消息进行去重')
-        links = self.checkbox['links'][:checknum]
-        sizes = self.checkbox['sizes'][:checknum]
+        print(f'当前监控频道【{chat_name}】，本次检测最近【{checknum}】条历史消息进行去重')
+        links = self.checkbox['links'][-checknum:]
+        sizes = self.checkbox['sizes'][-checknum:]
         try:
             if try_join:
                 await self.client(JoinChannelRequest(chat_name))
             chat = await self.client.get_entity(chat_name)
             messages = self.client.iter_messages(chat, limit=limit, reverse=False)
-            async for message in messages:
+            async for message in self.reverse_async_iter(messages, limit=limit):
+            # async for message in messages:
                 jumpLink = await self.redirect_url(message)
                 self.random_wait(200, 1000)
                 forwards = message.forwards
@@ -498,7 +512,7 @@ class TGForwarder:
 if __name__ == '__main__':
     channels_groups_monitor = ['yunpanpan','hao115', 'yunpanshare', 'dianyingshare', 'alyp_4K_Movies', 'Aliyun_4K_Movies','Quark_Movies',
                                'XiangxiuNB', 'kuakeyun', 'ucpanpan', 'ydypzyfx', 'tianyi_pd2',
-                               'guaguale115', 'ucquark', 'NewQuark|60', 'alyp_1','shareAliyun']
+                               'guaguale115', 'NewQuark|60', 'alyp_1','shareAliyun','ucquark']
     forward_to_channel = 'tgsearchers'
     # 监控最近消息数
     limit = 20
