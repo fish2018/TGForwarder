@@ -38,7 +38,8 @@ class TGForwarder:
         self.today_count = checknum
         self.history = 'history.json'
         # 正则表达式匹配资源链接
-        self.pattern = r"(?:链接：\s*)?((?!https?://t\.me)https?://[^\s'】\n]+(?=\n|$)|magnet:\?xt=urn:btih:[a-zA-Z0-9]+)"
+        # self.pattern = r"(?:链接：\s*)?((?!https?://t\.me)https?://[^\s'】\n]+(?=\n|$)|magnet:\?xt=urn:btih:[a-zA-Z0-9]+)"
+        self.pattern = r"(?:链接：\s*)?((?!https?://t\.me)(?:https?://[^\s'】\n]+|magnet:\?xt=urn:btih:[a-zA-Z0-9]+))"
         self.api_id = api_id
         self.api_hash = api_hash
         self.string_session = string_session
@@ -287,7 +288,7 @@ class TGForwarder:
             min_id=0,
             hash=0
         ))
-        print(result)
+        # print(result)
         # 如果没有消息，返回0
         #if not result.messages:
         #    return f'今日共更新【0】条资源'
@@ -331,14 +332,17 @@ class TGForwarder:
         self.checkbox["chat_forward_count_msg_id"] = chat_forward_count_msg_id
     async def redirect_url(self, message):
         link = []
+        urls_kw = ['magnet','drive.uc.cn','caiyun.139.com','cloud.189.cn','pan.quark.cn','115.com','anxia.com','alipan.com','aliyundrive.com']
         if message.entities:
             for entity in message.entities:
                 if isinstance(entity, MessageEntityTextUrl):
-                    if 'https://telegra.ph' in entity.url:
-                        continue
-                    elif 'start' in entity.url:
+                    # if 'https://telegra.ph' in entity.url:
+                    #     continue
+                    if 'start' in entity.url:
                         link = await self.tgbot(entity.url)
                         return link
+                    elif self.nocontains(entity.url, urls_kw):
+                        continue
                     else:
                         url = urllib.parse.unquote(entity.url)
                         matches = re.findall(self.pattern, url)
@@ -362,7 +366,6 @@ class TGForwarder:
         links = re.findall(r'(https?://[^\s]+)', message)
         link = links[0] if links else ''
         return link
-
     async def reverse_async_iter(self, async_iter, limit):
         # 使用 deque 存储消息，方便从尾部添加
         buffer = deque(maxlen=limit)
@@ -386,7 +389,6 @@ class TGForwarder:
             chat = await self.client.get_entity(chat_name)
             messages = self.client.iter_messages(chat, limit=limit, reverse=False)
             async for message in self.reverse_async_iter(messages, limit=limit):
-            # async for message in messages:
                 jumpLink = await self.redirect_url(message)
                 self.random_wait(200, 1000)
                 forwards = message.forwards
@@ -518,7 +520,7 @@ if __name__ == '__main__':
     # 监控消息中评论数，有些视频、资源链接被放到评论中
     replies_limit = 1
     include = ['链接', '片名', '名称', '剧名','magnet','drive.uc.cn','caiyun.139.com','cloud.189.cn','pan.quark.cn','115.com','anxia.com','alipan.com','aliyundrive.com','夸克云盘','阿里云盘','磁力链接']
-    exclude = ['预告', '预感', '盈利', '即可观看','书籍','电子书','图书','丛书','软件','安卓','Android','课程','作品','教程','教学','全书','名著','mobi','epub','pdf','PDF','PPT','抽奖','完整版','文学','写作','节课','套装',
+    exclude = ['预告', '预感', '盈利', '即可观看','书籍','电子书','图书','丛书','软件','安卓','Android','课程','作品','教程','教学','全书','名著','mobi','epub','pdf','PDF','PPT','抽奖','完整版','文学','写作','节课','套装','话术','纯净版','日历'
            'txt','MP3','mp3','WAV','CD','音乐','专辑','模板','书中','读物','入门','零基础','常识','干货','电商','小红书','抖音','资料','华为','短剧','纪录片','记录片','纪录','纪实','学习','付费','小学','初中','数学','语文']
     # 消息中的超链接文字，如果存在超链接，会用url替换文字
     hyperlink_text = ["点击查看","【夸克网盘】点击获取","【百度网盘】点击获取","【阿里云盘】点击获取"]
