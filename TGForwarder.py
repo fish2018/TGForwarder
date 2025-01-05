@@ -553,8 +553,8 @@ if __name__ == '__main__':
     string_session = 'xxx'
     # 默认不开启代理
     proxy = None
-    # 检测自己频道最近500条消息是否已经包含该资源
-    checknum = 500
+    # 检测自己频道最近200条消息是否已经包含该资源
+    checknum = 200
     # 对网盘链接有效性检测
     linkvalidtor = False
     # 允许转发今年之前的资源
