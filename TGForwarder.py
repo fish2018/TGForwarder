@@ -287,6 +287,7 @@ class TGForwarder:
             min_id=0,
             hash=0
         ))
+        print(result)
         # 如果没有消息，返回0
         #if not result.messages:
         #    return f'今日共更新【0】条资源'
@@ -510,9 +511,7 @@ class TGForwarder:
 
 
 if __name__ == '__main__':
-    channels_groups_monitor = ['yunpanpan','hao115', 'yunpanshare', 'dianyingshare', 'alyp_4K_Movies', 'Aliyun_4K_Movies','Quark_Movies',
-                               'XiangxiuNB', 'kuakeyun', 'ucpanpan', 'ydypzyfx', 'tianyi_pd2',
-                               'guaguale115', 'NewQuark|60', 'alyp_1','shareAliyun','ucquark']
+    channels_groups_monitor = ['guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan|4','hao115', 'yunpanshare', 'Aliyun_4K_Movies', 'dianyingshare', 'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx', 'tianyi_pd2', 'ucpanpan', 'kuakeyun', 'ucquark']
     forward_to_channel = 'tgsearchers'
     # 监控最近消息数
     limit = 20
