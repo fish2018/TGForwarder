@@ -181,8 +181,8 @@ class TGForwarder:
                 matches = re.findall(self.pattern, message.message)
                 for match in matches:
                     links.append(match)
-        self.checkbox['links'] = list(set(links))
-        self.checkbox['sizes'] = list(set(sizes))
+        self.checkbox['links'] = list(set(links + self.checkbox['links']))
+        self.checkbox['sizes'] = list(set(sizes + self.checkbox['sizes']))
     async def check_aliyun(self,share_id):
         api_url = "https://api.aliyundrive.com/adrive/v3/share_link/get_share_by_anonymous"
         headers = {"Content-Type": "application/json"}
@@ -381,8 +381,8 @@ class TGForwarder:
         global total
         checknum = self.checknum if self.today_count < self.checknum else self.today_count
         print(f'当前监控频道【{chat_name}】，本次检测最近【{checknum}】条历史消息进行去重')
-        links = self.checkbox['links'][-checknum:]
-        sizes = self.checkbox['sizes'][-checknum:]
+        links = self.checkbox['links']
+        sizes = self.checkbox['sizes']
         try:
             if try_join:
                 await self.client(JoinChannelRequest(chat_name))
