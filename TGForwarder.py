@@ -401,7 +401,6 @@ class TGForwarder:
                     # 判断消息日期是否是当天
                     if message_china_time.date() != self.today:
                         continue
-                jumpLink = await self.redirect_url(message)
                 self.random_wait(200, 1000)
                 forwards = message.forwards
                 if message.media:
@@ -417,6 +416,7 @@ class TGForwarder:
                                 print(f'视频已经存在，size: {size}')
                     # 图文(匹配关键词)
                     elif self.contains(message.message, self.include) and message.message and self.nocontains(message.message, self.exclude):
+                        jumpLink = await self.redirect_url(message)
                         matches = re.findall(self.pattern, message.message)
                         if matches or jumpLink:
                             link = jumpLink if jumpLink else matches[0]
@@ -476,6 +476,7 @@ class TGForwarder:
                 # 纯文本消息
                 elif message.message:
                     if self.contains(message.message, self.include) and self.nocontains(message.message, self.exclude):
+                        jumpLink = await self.redirect_url(message)
                         matches = re.findall(self.pattern, message.message)
                         if matches or jumpLink:
                             link = jumpLink if jumpLink else matches[0]
@@ -535,7 +536,7 @@ if __name__ == '__main__':
     # 监控消息中评论数，有些视频、资源链接被放到评论中
     replies_limit = 1
     include = ['链接', '片名', '名称', '剧名','magnet','drive.uc.cn','caiyun.139.com','cloud.189.cn','pan.quark.cn','115.com','anxia.com','alipan.com','aliyundrive.com','夸克云盘','阿里云盘','磁力链接']
-    exclude = ['预告', '预感', '盈利', '即可观看','书籍','电子书','图书','丛书','软件','破解版','安卓','Android','课程','作品','教程','教学','全书','名著','mobi','MOBI','epub','pdf','PDF','PPT','抽奖','完整版','文学','写作','节课','套装','话术','纯净版','日历'
+    exclude = ['小程序','预告', '预感', '盈利', '即可观看','书籍','电子书','图书','丛书','软件','破解版','免安装','安卓','Android','课程','作品','教程','教学','全书','名著','mobi','MOBI','epub','pdf','PDF','PPT','抽奖','完整版','文学','写作','节课','套装','话术','纯净版','日历'
            'txt','MP3','mp3','WAV','CD','音乐','专辑','模板','书中','读物','入门','零基础','常识','电商','小红书','抖音','资料','华为','短剧','纪录片','记录片','纪录','纪实','学习','付费','小学','初中','数学','语文']
     # 消息中的超链接文字，如果存在超链接，会用url替换文字
     hyperlink_text = ["点击查看","【夸克网盘】点击获取","【百度网盘】点击获取","【阿里云盘】点击获取"]
