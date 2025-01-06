@@ -32,7 +32,7 @@ if os.environ.get("HTTP_PROXY"):
 
 class TGForwarder:
     def __init__(self, api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel,
-                 limit, replies_limit, include, exclude, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor, replacements, channel_match, hyperlink_text, past_years):
+                 limit, replies_limit, include, exclude, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor, replacements, channel_match, hyperlink_text, past_years, only_today):
         self.checkbox = {}
         self.checknum = checknum
         self.today_count = checknum
@@ -59,6 +59,7 @@ class TGForwarder:
             self.exclude = exclude+years_list
         else:
             self.exclude = exclude
+        self.only_today = only_today
         self.hyperlink_text = hyperlink_text
         self.replacements = replacements
         self.channel_match = channel_match
@@ -394,11 +395,12 @@ class TGForwarder:
             chat = await self.client.get_entity(chat_name)
             messages = self.client.iter_messages(chat, limit=limit, reverse=False)
             async for message in self.reverse_async_iter(messages, limit=limit):
-                # 将消息时间转换为中国时区
-                message_china_time = message.date + self.china_timezone_offset
-                # 判断消息日期是否是当天
-                if message_china_time.date() != self.today:
-                    continue
+                if self.only_today:
+                    # 将消息时间转换为中国时区
+                    message_china_time = message.date + self.china_timezone_offset
+                    # 判断消息日期是否是当天
+                    if message_china_time.date() != self.today:
+                        continue
                 jumpLink = await self.redirect_url(message)
                 self.random_wait(200, 1000)
                 forwards = message.forwards
@@ -566,11 +568,13 @@ if __name__ == '__main__':
     string_session = 'xxx'
     # 默认不开启代理
     proxy = None
-    # 检测自己频道最近50条消息是否已经包含该资源
+    # 首次检测自己频道最近checknum条消息去重，后续检测累加已转发的消息数，如果当日转发数超过checknum条，则检测当日转发总数
     checknum = 50
     # 对网盘链接有效性检测
     linkvalidtor = False
     # 允许转发今年之前的资源
     past_years = False
+    # 只允许转发当日的
+    only_today = True
     TGForwarder(api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel, limit, replies_limit, include,
-                exclude, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor, replacements, channel_match, hyperlink_text, past_years).run()
+                exclude, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor, replacements, channel_match, hyperlink_text, past_years, only_today).run()
