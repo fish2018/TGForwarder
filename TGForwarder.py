@@ -497,8 +497,8 @@ class TGForwarder:
                                     links.append(link)
                             else:
                                 print(f'链接已存在，link: {link}')
-            self.checkbox['links'] = list(set(links+hlinks))
-            self.checkbox['sizes'] = list(set(sizes+hsizes))
+            self.checkbox['links'] = list(set(links+self.checkbox['links']))
+            self.checkbox['sizes'] = list(set(sizes+self.checkbox['sizes']))
             print(f"从 {chat_name} 转发资源 成功: {total}")
             return list(set(links+hlinks)), list(set(sizes+hsizes))
         except Exception as e:
