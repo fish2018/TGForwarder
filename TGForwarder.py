@@ -33,7 +33,8 @@ if os.environ.get("HTTP_PROXY"):
 class TGForwarder:
     def __init__(self, api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel,
                  limit, replies_limit, include, exclude, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor, replacements, channel_match, hyperlink_text, past_years, only_today):
-        self.checkbox = {"links":[],"sizes":[]}
+        self.urls_kw = ['magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', 'pan.quark.cn', '115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com']
+        self.checkbox = {"links":[],"sizes":[],"chat_forward_count_msg_id":{},"today_count":0}
         self.checknum = checknum
         self.today_count = checknum
         self.history = 'history.json'
@@ -51,7 +52,7 @@ class TGForwarder:
         self.china_timezone_offset = timedelta(hours=8)  # 中国时区是 UTC+8
         self.today = (datetime.utcnow() + self.china_timezone_offset).date()
         # 获取当前年份
-        current_year = datetime.now().year - 1
+        current_year = datetime.now().year - 4
         # 过滤今年之前的影视资源
         if not past_years:
             years_list = [str(year) for year in range(1895, current_year)]
@@ -281,13 +282,16 @@ class TGForwarder:
     async def del_channel_forward_count_msg(self):
         # 删除消息
         chat_forward_count_msg_id = self.checkbox.get("chat_forward_count_msg_id")
+        if not chat_forward_count_msg_id:
+            return
 
-        forward_to_channel_message_id = chat_forward_count_msg_id.get(self.forward_to_channel) if chat_forward_count_msg_id else None
+        forward_to_channel_message_id = chat_forward_count_msg_id.get(self.forward_to_channel)
         if forward_to_channel_message_id:
             await self.client.delete_messages(self.forward_to_channel, [forward_to_channel_message_id])
 
         if self.channel_match:
             for rule in self.channel_match:
+                print(222,rule['target'])
                 target_channel_msg_id = chat_forward_count_msg_id.get(rule['target'])
                 await self.client.delete_messages(rule['target'], [target_channel_msg_id])
     async def send_daily_forwarded_count(self):
@@ -311,7 +315,7 @@ class TGForwarder:
         self.checkbox["chat_forward_count_msg_id"] = chat_forward_count_msg_id
     async def redirect_url(self, message):
         link = ''
-        urls_kw = ['magnet','drive.uc.cn','caiyun.139.com','cloud.189.cn','pan.quark.cn','115.com','anxia.com','alipan.com','aliyundrive.com']
+
         if message.entities:
             for entity in message.entities:
                 if isinstance(entity, MessageEntityTextUrl):
@@ -320,7 +324,7 @@ class TGForwarder:
                     if 'start' in entity.url:
                         link = await self.tgbot(entity.url)
                         return link
-                    elif self.nocontains(entity.url, urls_kw):
+                    elif self.nocontains(entity.url, self.urls_kw):
                         continue
                     else:
                         url = urllib.parse.unquote(entity.url)
@@ -420,7 +424,7 @@ class TGForwarder:
                     # 图文(匹配关键词)
                     elif self.contains(message.message, self.include) and message.message and self.nocontains(message.message, self.exclude):
                         jumpLink = await self.redirect_url(message)
-                        matches = re.findall(self.pattern, message.message)
+                        matches = re.findall(self.pattern, message.message) if self.contains(message.message, self.urls_kw) else []
                         if matches or jumpLink:
                             link = jumpLink if jumpLink else matches[0]
                             if link not in links:
@@ -480,7 +484,7 @@ class TGForwarder:
                 elif message.message:
                     if self.contains(message.message, self.include) and self.nocontains(message.message, self.exclude):
                         jumpLink = await self.redirect_url(message)
-                        matches = re.findall(self.pattern, message.message)
+                        matches = re.findall(self.pattern, message.message) if self.contains(message.message, self.urls_kw) else []
                         if matches or jumpLink:
                             link = jumpLink if jumpLink else matches[0]
                             if link not in links:
@@ -532,20 +536,29 @@ class TGForwarder:
 
 
 if __name__ == '__main__':
-    channels_groups_monitor = ['guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan|4','hao115', 'yunpanshare', 'Aliyun_4K_Movies', 'dianyingshare', 'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx', 'tianyi_pd2', 'ucpanpan', 'kuakeyun', 'ucquark']
+    channels_groups_monitor = ['Q66Share','NewAliPan','Oscar_4Kmovies','zyfb115','ucwpzy','ikiviyyp','alyp_TV','alyp_4K_Movies','guaguale115', 
+                               'shareAliyun', 'alyp_1', 'yunpanpan', 'hao115', 'yunpanshare','Aliyun_4K_Movies', 'dianyingshare', 'Quark_Movies', 
+                               'XiangxiuNB', 'NewQuark|60', 'ydypzyfx', 'tianyi_pd2', 'ucpanpan', 'kuakeyun', 'ucquark']
     forward_to_channel = 'tgsearchers'
     # 监控最近消息数
     limit = 20
     # 监控消息中评论数，有些视频、资源链接被放到评论中
     replies_limit = 1
-    include = ['链接', '片名', '名称', '剧名','magnet','drive.uc.cn','caiyun.139.com','cloud.189.cn','pan.quark.cn','115.com','anxia.com','alipan.com','aliyundrive.com','夸克云盘','阿里云盘','磁力链接']
-    exclude = ['小程序','预告', '预感', '盈利', '即可观看','书籍','电子书','图书','丛书','软件','破解版','免安装','安卓','Android','课程','作品','教程','教学','全书','名著','mobi','MOBI','epub','pdf','PDF','PPT','抽奖','完整版','文学','写作','节课','套装','话术','纯净版','日历'
-           'txt','MP3','mp3','WAV','CD','音乐','专辑','模板','书中','读物','入门','零基础','常识','电商','小红书','抖音','资料','华为','短剧','纪录片','记录片','纪录','纪实','学习','付费','小学','初中','数学','语文']
+    include = ['链接', '片名', '名称', '剧名', 'magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn',
+               'pan.quark.cn', '115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com', '夸克云盘', '阿里云盘', '磁力链接']
+    exclude = ['小程序', '预告', '预感', '盈利', '即可观看', '书籍', '电子书', '图书', '丛书', '软件', '破解版',
+               '免安装', '安卓', 'Android', '课程', '作品', '教程', '教学', '全书', '名著', 'mobi', 'MOBI', 'epub',
+               'pdf', 'PDF', 'PPT', '抽奖', '完整版', '文学', '写作', '节课', '套装', '话术', '纯净版', '日历''txt', 'MP3',
+               'mp3', 'WAV', 'CD', '音乐', '专辑', '模板', '书中', '读物', '入门', '零基础', '常识', '电商', '小红书',
+               '抖音', '资料', '华为', '短剧', '纪录片', '记录片', '纪录', '纪实', '学习', '付费', '小学', '初中','数学', '语文']
     # 消息中的超链接文字，如果存在超链接，会用url替换文字
-    hyperlink_text = ["点击查看","【夸克网盘】点击获取","【百度网盘】点击获取","【阿里云盘】点击获取"]
+    hyperlink_text = ["点击查看", "【夸克网盘】点击获取", "【百度网盘】点击获取", "【阿里云盘】点击获取"]
     # 替换消息中关键字(tag/频道/群组)
     replacements = {
-        forward_to_channel: ['ucquark','uckuake',"yunpanshare", "yunpangroup", "Quark_0", "Quark_Movies", "guaguale115","Aliyundrive_Share_Channel", "alyd_g", "shareAliyun", "aliyundriveShare", "hao115", "Mbox115","NewQuark", "Quark_Share_Group", "QuarkRobot", "memosfanfan_bot", "aliyun_share_bot", "AliYunPanBot"],
+        forward_to_channel: ['ucquark', 'uckuake', "yunpanshare", "yunpangroup", "Quark_0", "Quark_Movies",
+                             "guaguale115", "Aliyundrive_Share_Channel", "alyd_g", "shareAliyun", "aliyundriveShare",
+                             "hao115", "Mbox115", "NewQuark", "Quark_Share_Group", "QuarkRobot", "memosfanfan_bot",
+                             "aliyun_share_bot", "AliYunPanBot"],
         "动漫": ["国漫", "日漫"],
         "连续剧": ["国剧", "韩剧", "泰剧", "日剧"]
     }
@@ -580,5 +593,6 @@ if __name__ == '__main__':
     past_years = False
     # 只允许转发当日的
     only_today = True
-    TGForwarder(api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel, limit, replies_limit, include,
-                exclude, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor, replacements, channel_match, hyperlink_text, past_years, only_today).run()
+    TGForwarder(api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel, limit, replies_limit,
+                include,exclude, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor,
+                replacements,channel_match, hyperlink_text, past_years, only_today).run()
