@@ -33,12 +33,11 @@ if os.environ.get("HTTP_PROXY"):
 class TGForwarder:
     def __init__(self, api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel,
                  limit, replies_limit, include, exclude, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor, replacements, channel_match, hyperlink_text, past_years, only_today):
-        self.checkbox = {}
+        self.checkbox = {"links":[],"sizes":[]}
         self.checknum = checknum
         self.today_count = checknum
         self.history = 'history.json'
         # 正则表达式匹配资源链接
-        # self.pattern = r"(?:链接：\s*)?((?!https?://t\.me)https?://[^\s'】\n]+(?=\n|$)|magnet:\?xt=urn:btih:[a-zA-Z0-9]+)"
         self.pattern = r"(?:链接：\s*)?((?!https?://t\.me)(?:https?://[^\s'】\n]+|magnet:\?xt=urn:btih:[a-zA-Z0-9]+))"
         self.api_id = api_id
         self.api_hash = api_hash
@@ -311,7 +310,7 @@ class TGForwarder:
                 await self.client.delete_messages(rule['target'], [sm.id+1])
         self.checkbox["chat_forward_count_msg_id"] = chat_forward_count_msg_id
     async def redirect_url(self, message):
-        link = []
+        link = ''
         urls_kw = ['magnet','drive.uc.cn','caiyun.139.com','cloud.189.cn','pan.quark.cn','115.com','anxia.com','alipan.com','aliyundrive.com']
         if message.entities:
             for entity in message.entities:
@@ -330,21 +329,25 @@ class TGForwarder:
                             link = matches[0]
                         return link
     async def tgbot(self,url):
-        # 发送 /start 命令，带上自定义参数
-        # 提取机器人用户名
-        bot_username = url.split('/')[-1].split('?')[0]
-        # 提取命令和参数
-        query_string = url.split('?')[1]
-        command, parameter = query_string.split('=')
-        await self.client.send_message(bot_username, f'/{command} {parameter}')
-        # 等待一段时间以便消息到达
-        await asyncio.sleep(2)
-        # 获取最近的消息
-        messages = await self.client.get_messages(bot_username, limit=1)  # 获取最近5条消息
-        # print(f'消息内容: {messages[0].message}')
-        message = messages[0].message
-        links = re.findall(r'(https?://[^\s]+)', message)
-        link = links[0] if links else ''
+        link = ''
+        try:
+            # 发送 /start 命令，带上自定义参数
+            # 提取机器人用户名
+            bot_username = url.split('/')[-1].split('?')[0]
+            # 提取命令和参数
+            query_string = url.split('?')[1]
+            command, parameter = query_string.split('=')
+            await self.client.send_message(bot_username, f'/{command} {parameter}')
+            # 等待一段时间以便消息到达
+            await asyncio.sleep(2)
+            # 获取最近的消息
+            messages = await self.client.get_messages(bot_username, limit=1)  # 获取最近1条消息
+            # print(f'消息内容: {messages[0].message}')
+            message = messages[0].message
+            links = re.findall(r'(https?://[^\s]+)', message)
+            link = links[0] if links else ''
+        except Exception as e:
+            print(f'TG_Bot error: {e}')
         return link
     async def reverse_async_iter(self, async_iter, limit):
         # 使用 deque 存储消息，方便从尾部添加
