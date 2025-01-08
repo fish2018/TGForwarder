@@ -504,8 +504,8 @@ class TGForwarder:
                                     links.append(link)
                             else:
                                 print(f'链接已存在，link: {link}')
-            self.checkbox['links'] = list(set(self.checkbox['links']+links))
-            self.checkbox['sizes'] = list(set(self.checkbox['sizes']+sizes))
+            # self.checkbox['links'] = list(set(self.checkbox['links']+links))
+            # self.checkbox['sizes'] = list(set(self.checkbox['sizes']+sizes))
             print(f"从 {chat_name} 转发资源 成功: {total}")
             return list(set(hlinks+links)), list(set(hsizes+sizes))
         except Exception as e:
@@ -529,6 +529,8 @@ class TGForwarder:
         if self.fdown:
             shutil.rmtree(self.download_folder)
         with open(self.history, 'w+', encoding='utf-8') as f:
+            self.checkbox['links'] = list(set(self.checkbox['links']+links))
+            self.checkbox['sizes'] = list(set(self.checkbox['sizes']+sizes))
             f.write(json.dumps(self.checkbox))
     def run(self):
         with self.client.start():
