@@ -280,34 +280,36 @@ class TGForwarder:
         msg = f'今日共更新【{today_count}】条资源'
         return msg
 
-    async def delete_messages_in_time_range(self, chat_name):
-        # 获取当前中国时区时间
-        china_timezone_offset = timedelta(hours=8)  # 中国时区是 UTC+8
-        china_timezone = timezone(china_timezone_offset)  # 创建中国时区对象
-        now = datetime.utcnow().replace(tzinfo=timezone.utc).astimezone(china_timezone)
-
-        # 今天的日期
-        today = now.date()
-
-        # 目标时间范围：今天的 00:00 到 10:00（中国时区）
-        start_time = datetime(today.year, today.month, today.day, 0, 00, tzinfo=china_timezone)  # 00:00
-        end_time = datetime(today.year, today.month, today.day, 10, 00, tzinfo=china_timezone)  # 10:00
+    async def delete_messages_in_time_range(self, chat_name, start_time_str, end_time_str):
+        """
+        删除指定聊天中在指定时间范围内的消息
+        :param chat_name: 聊天名称或ID
+        :param start_time_str: 开始时间字符串，格式为 "YYYY-MM-DD HH:MM"
+        :param end_time_str: 结束时间字符串，格式为 "YYYY-MM-DD HH:MM"
+        """
+        # 中国时区偏移量（UTC+8）
+        china_timezone_offset = timedelta(hours=8)
+        china_timezone = timezone(china_timezone_offset)
+        # 将字符串时间解析为带有时区信息的 datetime 对象
+        start_time = datetime.strptime(start_time_str, "%Y-%m-%d %H:%M").replace(tzinfo=china_timezone)
+        end_time = datetime.strptime(end_time_str, "%Y-%m-%d %H:%M").replace(tzinfo=china_timezone)
         # 获取聊天实体
         chat = await self.client.get_entity(chat_name)
         # 遍历消息
         async for message in self.client.iter_messages(chat):
             # 将消息时间转换为中国时区
             message_china_time = message.date.astimezone(china_timezone)
-
             # 判断消息是否在目标时间范围内
             if start_time <= message_china_time <= end_time:
                 # print(f"删除消息：{message.text} (时间：{message_china_time})")
                 await message.delete()  # 删除消息
-    async def clear_main(self):
-        await self.delete_messages_in_time_range(self.forward_to_channel)
+    async def clear_main(self,start_time,end_time):
+        await self.delete_messages_in_time_range(self.forward_to_channel,start_time,end_time)
     def clear(self):
+        start_time = "2025-01-07 23:30",
+        end_time = "2025-01-08 10:00"
         with self.client.start():
-            self.client.loop.run_until_complete(self.clear_main())
+            self.client.loop.run_until_complete(self.clear_main(start_time,end_time))
     async def del_channel_forward_count_msg(self):
         # 删除消息
         chat_forward_count_msg_id = self.checkbox.get("chat_forward_count_msg_id")
