@@ -504,10 +504,10 @@ class TGForwarder:
                                     links.append(link)
                             else:
                                 print(f'链接已存在，link: {link}')
-            self.checkbox['links'] = list(set(links+self.checkbox['links']))
-            self.checkbox['sizes'] = list(set(sizes+self.checkbox['sizes']))
+            self.checkbox['links'] = list(set(self.checkbox['links']+links))
+            self.checkbox['sizes'] = list(set(self.checkbox['sizes']+sizes))
             print(f"从 {chat_name} 转发资源 成功: {total}")
-            return list(set(links+hlinks)), list(set(sizes+hsizes))
+            return list(set(hlinks+links)), list(set(hsizes+sizes))
         except Exception as e:
             print(f"从 {chat_name} 转发资源 失败: {e}")
     async def main(self):
