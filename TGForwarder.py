@@ -98,6 +98,7 @@ class TGForwarder:
                 for word in source_words:
                     # 使用替换方法，而不是正则
                     message = message.replace(word, target_word)
+        message = message.strip()
         return message
     async def dispatch_channel(self, message, jumpLink=''):
         hit = False
@@ -291,7 +292,6 @@ class TGForwarder:
 
         if self.channel_match:
             for rule in self.channel_match:
-                print(222,rule['target'])
                 target_channel_msg_id = chat_forward_count_msg_id.get(rule['target'])
                 await self.client.delete_messages(rule['target'], [target_channel_msg_id])
     async def send_daily_forwarded_count(self):
@@ -533,6 +533,10 @@ class TGForwarder:
             self.checkbox['links'] = list(set(links))
             self.checkbox['sizes'] = list(set(sizes))
             f.write(json.dumps(self.checkbox))
+    def run(self):
+        with self.client.start():
+            self.client.loop.run_until_complete(self.main())
+
     async def delete_messages_in_time_range(self, chat_name, start_time_str, end_time_str):
         """
         删除指定聊天中在指定时间范围内的消息
@@ -556,16 +560,13 @@ class TGForwarder:
             if start_time <= message_china_time <= end_time:
                 # print(f"删除消息：{message.text} (时间：{message_china_time})")
                 await message.delete()  # 删除消息
-    async def clear_main(self,start_time,end_time):
-        await self.delete_messages_in_time_range(self.forward_to_channel,start_time,end_time)
+    async def clear_main(self, start_time, end_time):
+        await self.delete_messages_in_time_range(self.forward_to_channel, start_time, end_time)
     def clear(self):
         start_time = "2025-01-08 23:55"
         end_time = "2025-01-09 08:00"
         with self.client.start():
-            self.client.loop.run_until_complete(self.clear_main(start_time,end_time))
-    def run(self):
-        with self.client.start():
-            self.client.loop.run_until_complete(self.main())
+            self.client.loop.run_until_complete(self.clear_main(start_time, end_time))
 
 
 if __name__ == '__main__':
@@ -590,8 +591,9 @@ if __name__ == '__main__':
                              "guaguale115", "Aliyundrive_Share_Channel", "alyd_g", "shareAliyun", "aliyundriveShare",
                              "hao115", "Mbox115", "NewQuark", "Quark_Share_Group", "QuarkRobot", "memosfanfan_bot",
                              "aliyun_share_bot", "AliYunPanBot"],
-        "动漫": ["国漫", "日漫"],
-        "连续剧": ["国剧", "韩剧", "泰剧", "日剧"]
+        "": ["from 天翼云盘日更频道", "🦜投稿 • 🐝广告合作", " - 影巢", "🌍： 群主自用机场: 守候网络, 9折活动!", "🔥： 阿里云盘播放神器: VidHub",
+             "🔥： 移动云盘免流丝滑挂载播放: VidHub", "树洞频道 • 云盘投稿 • 广告合作", "画境流媒体播放器-免费看奈飞，迪士尼！", "AIFUN 爱翻 BGP入口极速专线",
+             "AIFUN 爱翻 机场", "✈️ 画境频道 • 🌐 画境官网 • 🎁 详情及下载"]
     }
     # 匹配关键字分发到不同频道/群组，不需要分发直接设置channel_match=[]即可
     # channel_match = [
@@ -626,5 +628,4 @@ if __name__ == '__main__':
     only_today = True
     TGForwarder(api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel, limit, replies_limit,
                 include,exclude, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor,
-                # replacements,channel_match, hyperlink_text, past_years, only_today).run()
-                replacements,channel_match, hyperlink_text, past_years, only_today).clear()
+                replacements,channel_match, hyperlink_text, past_years, only_today).run()
