@@ -52,7 +52,7 @@ class TGForwarder:
         self.china_timezone_offset = timedelta(hours=8)  # 中国时区是 UTC+8
         self.today = (datetime.utcnow() + self.china_timezone_offset).date()
         # 获取当前年份
-        current_year = datetime.now().year - 2
+        current_year = datetime.now().year - 4
         # 过滤今年之前的影视资源
         if not past_years:
             years_list = [str(year) for year in range(1895, current_year)]
@@ -279,40 +279,10 @@ class TGForwarder:
         self.checkbox["today_count"] = today_count
         msg = f'今日共更新【{today_count}】条资源'
         return msg
-
-    async def delete_messages_in_time_range(self, chat_name, start_time_str, end_time_str):
-        """
-        删除指定聊天中在指定时间范围内的消息
-        :param chat_name: 聊天名称或ID
-        :param start_time_str: 开始时间字符串，格式为 "YYYY-MM-DD HH:MM"
-        :param end_time_str: 结束时间字符串，格式为 "YYYY-MM-DD HH:MM"
-        """
-        # 中国时区偏移量（UTC+8）
-        china_timezone_offset = timedelta(hours=8)
-        china_timezone = timezone(china_timezone_offset)
-        # 将字符串时间解析为带有时区信息的 datetime 对象
-        start_time = datetime.strptime(start_time_str, "%Y-%m-%d %H:%M").replace(tzinfo=china_timezone)
-        end_time = datetime.strptime(end_time_str, "%Y-%m-%d %H:%M").replace(tzinfo=china_timezone)
-        # 获取聊天实体
-        chat = await self.client.get_entity(chat_name)
-        # 遍历消息
-        async for message in self.client.iter_messages(chat):
-            # 将消息时间转换为中国时区
-            message_china_time = message.date.astimezone(china_timezone)
-            # 判断消息是否在目标时间范围内
-            if start_time <= message_china_time <= end_time:
-                # print(f"删除消息：{message.text} (时间：{message_china_time})")
-                await message.delete()  # 删除消息
-    async def clear_main(self,start_time,end_time):
-        await self.delete_messages_in_time_range(self.forward_to_channel,start_time,end_time)
-    def clear(self):
-        start_time = "2025-01-07 23:30",
-        end_time = "2025-01-08 10:00"
-        with self.client.start():
-            self.client.loop.run_until_complete(self.clear_main(start_time,end_time))
     async def del_channel_forward_count_msg(self):
         # 删除消息
         chat_forward_count_msg_id = self.checkbox.get("chat_forward_count_msg_id")
+        print(1111,chat_forward_count_msg_id)
         if not chat_forward_count_msg_id:
             return
 
@@ -322,6 +292,7 @@ class TGForwarder:
 
         if self.channel_match:
             for rule in self.channel_match:
+                print(222,rule['target'])
                 target_channel_msg_id = chat_forward_count_msg_id.get(rule['target'])
                 await self.client.delete_messages(rule['target'], [target_channel_msg_id])
     async def send_daily_forwarded_count(self):
@@ -535,7 +506,8 @@ class TGForwarder:
                             else:
                                 print(f'链接已存在，link: {link}')
             print(f"从 {chat_name} 转发资源 成功: {total}")
-            return list(set(hlinks+links)), list(set(hsizes+sizes))
+            # return list(set(hlinks+links)), list(set(hsizes+sizes))
+            return list(set(links)), list(set(sizes))
         except Exception as e:
             print(f"从 {chat_name} 转发资源 失败: {e}")
     async def main(self):
@@ -557,15 +529,48 @@ class TGForwarder:
         if self.fdown:
             shutil.rmtree(self.download_folder)
         with open(self.history, 'w+', encoding='utf-8') as f:
-            self.checkbox['links'] = list(set(self.checkbox['links'] + links))
-            self.checkbox['sizes'] = list(set(self.checkbox['sizes'] + sizes))
+            # self.checkbox['links'] = list(self.checkbox['links'] + links)
+            # self.checkbox['sizes'] = list(self.checkbox['sizes'] + sizes)
+            self.checkbox['links'] = list(set(links))
+            self.checkbox['sizes'] = list(set(sizes))
             f.write(json.dumps(self.checkbox))
+    async def delete_messages_in_time_range(self, chat_name, start_time_str, end_time_str):
+        """
+        删除指定聊天中在指定时间范围内的消息
+        :param chat_name: 聊天名称或ID
+        :param start_time_str: 开始时间字符串，格式为 "YYYY-MM-DD HH:MM"
+        :param end_time_str: 结束时间字符串，格式为 "YYYY-MM-DD HH:MM"
+        """
+        # 中国时区偏移量（UTC+8）
+        china_timezone_offset = timedelta(hours=8)
+        china_timezone = timezone(china_timezone_offset)
+        # 将字符串时间解析为带有时区信息的 datetime 对象
+        start_time = datetime.strptime(start_time_str, "%Y-%m-%d %H:%M").replace(tzinfo=china_timezone)
+        end_time = datetime.strptime(end_time_str, "%Y-%m-%d %H:%M").replace(tzinfo=china_timezone)
+        # 获取聊天实体
+        chat = await self.client.get_entity(chat_name)
+        # 遍历消息
+        async for message in self.client.iter_messages(chat):
+            # 将消息时间转换为中国时区
+            message_china_time = message.date.astimezone(china_timezone)
+            # 判断消息是否在目标时间范围内
+            if start_time <= message_china_time <= end_time:
+                # print(f"删除消息：{message.text} (时间：{message_china_time})")
+                await message.delete()  # 删除消息
+    async def clear_main(self,start_time,end_time):
+        await self.delete_messages_in_time_range(self.forward_to_channel,start_time,end_time)
+    def clear(self):
+        start_time = "2025-01-08 23:55"
+        end_time = "2025-01-09 08:00"
+        with self.client.start():
+            self.client.loop.run_until_complete(self.clear_main(start_time,end_time))
     def run(self):
         with self.client.start():
             self.client.loop.run_until_complete(self.main())
 
+
 if __name__ == '__main__':
-    channels_groups_monitor = ['Q66Share','NewAliPan','zyfb115','ucwpzy','ikiviyyp','alyp_TV','alyp_4K_Movies','guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan', 'hao115', 'yunpanshare','Aliyun_4K_Movies', 'dianyingshare', 'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx', 'tianyi_pd2', 'ucpanpan', 'kuakeyun', 'ucquark']
+    channels_groups_monitor = ['Q66Share','NewAliPan','Oscar_4Kmovies','zyfb115','ucwpzy','ikiviyyp','alyp_TV','alyp_4K_Movies','guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan', 'hao115', 'yunpanshare','Aliyun_4K_Movies', 'dianyingshare', 'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx', 'tianyi_pd2', 'ucpanpan', 'kuakeyun', 'ucquark']
     forward_to_channel = 'tgsearchers'
     # 监控最近消息数
     limit = 20
@@ -622,4 +627,5 @@ if __name__ == '__main__':
     only_today = True
     TGForwarder(api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel, limit, replies_limit,
                 include,exclude, only_send, nokwforwards, fdown, download_folder, proxy, checknum, linkvalidtor,
-                replacements,channel_match, hyperlink_text, past_years, only_today).run()
+                # replacements,channel_match, hyperlink_text, past_years, only_today).run()
+                replacements,channel_match, hyperlink_text, past_years, only_today).clear()
