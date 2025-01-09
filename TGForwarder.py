@@ -282,7 +282,6 @@ class TGForwarder:
     async def del_channel_forward_count_msg(self):
         # 删除消息
         chat_forward_count_msg_id = self.checkbox.get("chat_forward_count_msg_id")
-        print(1111,chat_forward_count_msg_id)
         if not chat_forward_count_msg_id:
             return
 
