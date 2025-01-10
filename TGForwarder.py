@@ -52,7 +52,7 @@ class TGForwarder:
         self.china_timezone_offset = timedelta(hours=8)  # 中国时区是 UTC+8
         self.today = (datetime.utcnow() + self.china_timezone_offset).date()
         # 获取当前年份
-        current_year = datetime.now().year - 4
+        current_year = datetime.now().year - 2
         # 过滤今年之前的影视资源
         if not past_years:
             years_list = [str(year) for year in range(1895, current_year)]
@@ -470,7 +470,7 @@ class TGForwarder:
         global total
         links = hlinks
         sizes = hsizes
-        print(f'当前监控频道【{chat_name}】，本次检测最近【{len(links)}】条历史消息进行去重')
+        print(f'当前监控频道【{chat_name}】，本次检测最近【{len(links)}】条历史资源进行去重')
         try:
             if try_join:
                 await self.client(JoinChannelRequest(chat_name))
@@ -584,6 +584,7 @@ class TGForwarder:
         except Exception as e:
             print(f"从 {chat_name} 转发资源 失败: {e}")
     async def main(self):
+        start_time = time.time()
         links,sizes = await self.checkhistory()
         if not os.path.exists(self.download_folder):
             os.makedirs(self.download_folder)
@@ -606,6 +607,8 @@ class TGForwarder:
         # 调用函数，删除重复链接的旧消息
         await self.deduplicate_links()
         await self.client.disconnect()
+        end_time = time.time()
+        print(f'耗时: {end_time - start_time} 秒')
     def run(self):
         with self.client.start():
             self.client.loop.run_until_complete(self.main())
@@ -621,7 +624,7 @@ if __name__ == '__main__':
     include = ['链接', '片名', '名称', '剧名', 'magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn',
                'pan.quark.cn', '115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com', '夸克云盘', '阿里云盘', '磁力链接']
     exclude = ['小程序', '预告', '预感', '盈利', '即可观看', '书籍', '电子书', '图书', '丛书', '软件', '破解版',
-               '免安装', '安卓', 'Android', '课程', '作品', '教程', '教学', '全书', '名著', 'mobi', 'MOBI', 'epub',
+               '免安装', '免广告','安卓', 'Android', '课程', '作品', '教程', '教学', '全书', '名著', 'mobi', 'MOBI', 'epub',
                'pdf', 'PDF', 'PPT', '抽奖', '完整版', '有声书','读者','文学', '写作', '节课', '套装', '话术', '纯净版', '日历''txt', 'MP3',
                'mp3', 'WAV', 'CD', '音乐', '专辑', '模板', '书中', '读物', '入门', '零基础', '常识', '电商', '小红书','JPG',
                '抖音', '资料', '华为', '短剧', '纪录片', '记录片', '纪录', '纪实', '学习', '付费', '小学', '初中','数学', '语文']
@@ -632,7 +635,7 @@ if __name__ == '__main__':
         forward_to_channel: ["NewAliPan","ucquark", "uckuake", "yunpanshare", "yunpangroup", "Quark_0", "Quark_Movies",
                              "guaguale115", "Aliyundrive_Share_Channel", "alyd_g", "shareAliyun", "aliyundriveShare",
                              "hao115", "Mbox115", "NewQuark", "Quark_Share_Group", "QuarkRobot", "memosfanfan_bot",
-                             "aliyun_share_bot", "AliYunPanBot","大风车","雷锋","热心网友"],
+                             "aliyun_share_bot", "AliYunPanBot","None","大风车","雷锋","热心网友"],
         "": ["🦜投稿", "• ", "🐝", "树洞频道", "云盘投稿", "广告合作", "✈️ 画境频道", "🌐 画境官网", "🎁 详情及下载", " - 影巢", 
              "🌍： 群主自用机场: 守候网络, 9折活动!", "🔥： 阿里云盘播放神器: VidHub","🔥： 阿里云盘全能播放神器: VidHub","🔥： 移动云盘免流丝滑挂载播放: VidHub", "画境流媒体播放器-免费看奈飞，迪士尼！",
              "AIFUN 爱翻 BGP入口极速专线", "AIFUN 爱翻 机场", "from 天翼云盘日更频道","via 匿名"]
