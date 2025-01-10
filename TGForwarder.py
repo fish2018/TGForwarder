@@ -364,6 +364,80 @@ class TGForwarder:
         # 从 buffer 的尾部开始逆序迭代
         for message in reversed(buffer):
             yield message
+    async def delete_messages_in_time_range(self, chat_name, start_time_str, end_time_str):
+        """
+        删除指定聊天中在指定时间范围内的消息
+        :param chat_name: 聊天名称或ID
+        :param start_time_str: 开始时间字符串，格式为 "YYYY-MM-DD HH:MM"
+        :param end_time_str: 结束时间字符串，格式为 "YYYY-MM-DD HH:MM"
+        """
+        # 中国时区偏移量（UTC+8）
+        china_timezone_offset = timedelta(hours=8)
+        china_timezone = timezone(china_timezone_offset)
+        # 将字符串时间解析为带有时区信息的 datetime 对象
+        start_time = datetime.strptime(start_time_str, "%Y-%m-%d %H:%M").replace(tzinfo=china_timezone)
+        end_time = datetime.strptime(end_time_str, "%Y-%m-%d %H:%M").replace(tzinfo=china_timezone)
+        # 获取聊天实体
+        chat = await self.client.get_entity(chat_name)
+        # 遍历消息
+        async for message in self.client.iter_messages(chat):
+            # 将消息时间转换为中国时区
+            message_china_time = message.date.astimezone(china_timezone)
+            # 判断消息是否在目标时间范围内
+            if start_time <= message_china_time <= end_time:
+                # print(f"删除消息：{message.text} (时间：{message_china_time})")
+                await message.delete()  # 删除消息
+    async def clear_main(self, start_time, end_time):
+        await self.delete_messages_in_time_range(self.forward_to_channel, start_time, end_time)
+    def clear(self):
+        start_time = "2025-01-08 23:55"
+        end_time = "2025-01-09 08:00"
+        with self.client.start():
+            self.client.loop.run_until_complete(self.clear_main(start_time, end_time))
+    async def deduplicate_links(self):
+        """
+        删除聊天中重复链接的旧消息，只保留最新的消息
+        """
+        # 将 links 列表转换为集合，方便快速查找
+        target_links = set(self.checkbox['links'])
+        chats = [self.forward_to_channel]
+        if self.channel_match:
+            for rule in self.channel_match:
+                chats.append(rule['target'])
+        for chat_name in chats:
+            # 用于存储链接和最新消息的ID
+            links_dict = {}
+            # 用于批量删除的消息ID列表
+            messages_to_delete = []
+            # 获取聊天实体
+            chat = await self.client.get_entity(chat_name)
+            # 遍历消息
+            async for message in self.client.iter_messages(chat):
+                if message.message:
+                    # 提取消息中的链接
+                    links_in_message = re.findall(self.pattern, message.message)
+                    if not links_in_message:
+                        continue  # 如果消息中没有链接，跳过
+                    # 检查消息中的链接是否在目标链接列表中
+                    for link in links_in_message:
+                        if link in target_links:  # 只处理目标链接
+                            if link in links_dict:
+                                # 如果链接已存在，比较消息ID
+                                if message.id > links_dict[link]:
+                                    # 当前消息更新，记录旧消息ID
+                                    messages_to_delete.append(links_dict[link])
+                                    # 更新字典中的消息ID
+                                    links_dict[link] = message.id
+                                else:
+                                    # 当前消息是旧的，记录当前消息ID
+                                    messages_to_delete.append(message.id)
+                            else:
+                                # 如果链接不存在，直接记录消息ID
+                                links_dict[link] = message.id
+            # 批量删除旧消息
+            if messages_to_delete:
+                print(f"【{chat_name}】删除 {len(messages_to_delete)} 条历史重复消息")
+                await self.client.delete_messages(chat, messages_to_delete)
     async def checkhistory(self):
         '''
         检索历史消息用于过滤去重
@@ -522,7 +596,6 @@ class TGForwarder:
             total = 0
             links, sizes = await self.forward_messages(chat_name, limit, links, sizes)
         await self.send_daily_forwarded_count()
-        await self.client.disconnect()
         if self.fdown:
             shutil.rmtree(self.download_folder)
         with open(self.history, 'w+', encoding='utf-8') as f:
@@ -530,40 +603,12 @@ class TGForwarder:
             self.checkbox['sizes'] = list(set(sizes))
             self.checkbox['today'] = datetime.now().strftime("%Y-%m-%d")
             f.write(json.dumps(self.checkbox))
+        # 调用函数，删除重复链接的旧消息
+        await self.deduplicate_links()
+        await self.client.disconnect()
     def run(self):
         with self.client.start():
             self.client.loop.run_until_complete(self.main())
-
-    async def delete_messages_in_time_range(self, chat_name, start_time_str, end_time_str):
-        """
-        删除指定聊天中在指定时间范围内的消息
-        :param chat_name: 聊天名称或ID
-        :param start_time_str: 开始时间字符串，格式为 "YYYY-MM-DD HH:MM"
-        :param end_time_str: 结束时间字符串，格式为 "YYYY-MM-DD HH:MM"
-        """
-        # 中国时区偏移量（UTC+8）
-        china_timezone_offset = timedelta(hours=8)
-        china_timezone = timezone(china_timezone_offset)
-        # 将字符串时间解析为带有时区信息的 datetime 对象
-        start_time = datetime.strptime(start_time_str, "%Y-%m-%d %H:%M").replace(tzinfo=china_timezone)
-        end_time = datetime.strptime(end_time_str, "%Y-%m-%d %H:%M").replace(tzinfo=china_timezone)
-        # 获取聊天实体
-        chat = await self.client.get_entity(chat_name)
-        # 遍历消息
-        async for message in self.client.iter_messages(chat):
-            # 将消息时间转换为中国时区
-            message_china_time = message.date.astimezone(china_timezone)
-            # 判断消息是否在目标时间范围内
-            if start_time <= message_china_time <= end_time:
-                # print(f"删除消息：{message.text} (时间：{message_china_time})")
-                await message.delete()  # 删除消息
-    async def clear_main(self, start_time, end_time):
-        await self.delete_messages_in_time_range(self.forward_to_channel, start_time, end_time)
-    def clear(self):
-        start_time = "2025-01-08 23:55"
-        end_time = "2025-01-09 08:00"
-        with self.client.start():
-            self.client.loop.run_until_complete(self.clear_main(start_time, end_time))
 
 
 if __name__ == '__main__':
