@@ -461,8 +461,8 @@ class TGForwarder:
             # 匹配出链接
             if message.message:
                 matches = re.findall(self.pattern, message.message)
-                for match in matches:
-                    links.append(match)
+                if matches:
+                    links.append(matches[0])
         links = list(set(links))
         sizes = list(set(sizes))
         return links,sizes
@@ -600,8 +600,8 @@ class TGForwarder:
         if self.fdown:
             shutil.rmtree(self.download_folder)
         with open(self.history, 'w+', encoding='utf-8') as f:
-            self.checkbox['links'] = list(set(links))
-            self.checkbox['sizes'] = list(set(sizes))
+            self.checkbox['links'] = list(set(links))[-self.checkbox["today_count"]:]
+            self.checkbox['sizes'] = list(set(sizes))[-self.checkbox["today_count"]:]
             self.checkbox['today'] = datetime.now().strftime("%Y-%m-%d")
             f.write(json.dumps(self.checkbox))
         # 调用函数，删除重复链接的旧消息
