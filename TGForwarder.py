@@ -100,7 +100,7 @@ class TGForwarder:
                     message = message.replace(word, target_word)
         message = message.strip()
         return message
-    async def dispatch_channel(self, message, jumpLinks=''):
+    async def dispatch_channel(self, message, jumpLinks=[]):
         hit = False
         if self.channel_match:
             for rule in self.channel_match:
@@ -417,6 +417,8 @@ class TGForwarder:
             "quark": ["pan.quark.cn"],  # 夸克
             "115": ["115.com", "anxia.com"],  # 115
             "aliyun": ["alipan.com", "aliyundrive.com"],  # 阿里云
+            "pikpak": ["mypikpak.com"],
+            "baidu": ["pan.baidu.com"],
             "others": []  # 其他
         }
         # 初始化结果字典
@@ -522,6 +524,30 @@ class TGForwarder:
         links = list(set(links))
         sizes = list(set(sizes))
         return links,sizes
+
+    async def copy_and_send_message(self, source_chat, target_chat, message_id, text=''):
+        """
+        复制消息内容并发送新消息
+        :param source_chat: 源聊天（可以是用户名、ID 或输入实体）
+        :param target_chat: 目标聊天（可以是用户名、ID 或输入实体）
+        :param message_id: 要复制的消息 ID
+        """
+        try:
+            # 获取原始消息
+            message = await self.client.get_messages(source_chat, ids=message_id)
+            if not message:
+                print("未找到消息")
+                return
+
+            # 发送新消息（复制原始消息内容和媒体文件）
+            await self.client.send_message(
+                target_chat,
+                text,  # 复制消息文本
+                file=message.media  # 复制消息的媒体文件
+            )
+            print("消息复制并发送成功")
+        except Exception as e:
+            print(f"操作失败: {e}")
     async def forward_messages(self, chat_name, limit, hlinks, hsizes):
         global total
         links = hlinks
@@ -544,14 +570,29 @@ class TGForwarder:
                 if message.media:
                     # 视频
                     if hasattr(message.document, 'mime_type') and self.contains(message.document.mime_type,'video') and self.nocontains(message.message, self.exclude):
-                        if forwards:
-                            size = message.document.size
-                            if size not in sizes:
-                                await self.client.forward_messages(self.forward_to_channel, message)
-                                sizes.append(size)
-                                total += 1
-                            else:
-                                print(f'视频已经存在，size: {size}')
+                        size = message.document.size
+                        text = message.message
+                        if message.message:
+                            jumpLinks = await self.redirect_url(message)
+                            if jumpLinks and self.hyperlink_text:
+                                categorized_urls = self.categorize_urls(jumpLinks)
+                                # 遍历每个分类
+                                for category, keywords in hyperlink_text.items():
+                                    # 获取该分类的第一个 URL（如果有）
+                                    if categorized_urls.get(category):
+                                        url = categorized_urls[category][0]  # 使用第一个 URL
+                                    else:
+                                        continue  # 如果没有 URL，跳过
+                                    # 遍历关键词并替换
+                                    for keyword in keywords:
+                                        if keyword in text:
+                                            text = text.replace(keyword, url)
+                        if size not in sizes:
+                            await self.copy_and_send_message(chat_name,self.forward_to_channel,message.id,text)
+                            sizes.append(size)
+                            total += 1
+                        else:
+                            print(f'视频已经存在，size: {size}')
                     # 图文(匹配关键词)
                     elif self.contains(message.message, self.include) and message.message and self.nocontains(message.message, self.exclude):
                         jumpLinks = await self.redirect_url(message)
@@ -565,7 +606,7 @@ class TGForwarder:
                                     for r in result:
                                         if r[1]:
                                             link_ok = True
-                                if forwards and not self.only_send and link_ok:
+                                if not self.only_send and link_ok:
                                     await self.client.forward_messages(self.forward_to_channel, message)
                                     total += 1
                                     links.append(link)
@@ -601,7 +642,7 @@ class TGForwarder:
                                             for r in result:
                                                 if r[1]:
                                                     link_ok = r[1]
-                                        if forwards and not self.only_send and link_ok:
+                                        if not self.only_send and link_ok:
                                             await self.client.forward_messages(self.forward_to_channel, r)
                                             total += 1
                                             links.append(link)
@@ -625,7 +666,7 @@ class TGForwarder:
                                     for r in result:
                                         if r[1]:
                                             link_ok = True
-                                if forwards and not self.only_send and link_ok:
+                                if not self.only_send and link_ok:
                                     await self.client.forward_messages(self.forward_to_channel, message)
                                     total += 1
                                     links.append(link)
@@ -672,14 +713,16 @@ class TGForwarder:
 
 if __name__ == '__main__':
     channels_groups_monitor = ['Q66Share','NewAliPan','Oscar_4Kmovies','zyfb115','ucwpzy','ikiviyyp','alyp_TV','alyp_4K_Movies','guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan', 'hao115', 'yunpanshare','Aliyun_4K_Movies', 'dianyingshare', 'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx', 'tianyi_pd2', 'ucpanpan', 'kuakeyun', 'ucquark']
+    channels_groups_monitor = ['debugfish']
     forward_to_channel = 'tgsearchers'
+    forward_to_channel = 'debugfish2'
     # 监控最近消息数
     limit = 20
     # 监控消息中评论数，有些视频、资源链接被放到评论中
     replies_limit = 1
     include = ['链接', '片名', '名称', '剧名', 'magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn',
                'pan.quark.cn', '115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com', '夸克云盘', '阿里云盘', '磁力链接']
-    exclude = ['小程序', '预告', '预感', '盈利', '即可观看', '书籍', '电子书', '图书', '丛书', '软件', '破解版',
+    exclude = ['小程序', '预告', '预感', '盈利', '即可观看', '书籍', '电子书', '图书', '丛书', 'app','软件', '破解版',
                '免安装', '免广告','安卓', 'Android', '课程', '作品', '教程', '教学', '全书', '名著', 'mobi', 'MOBI', 'epub',
                'pdf', 'PDF', 'PPT', '抽奖', '完整版', '有声书','读者','文学', '写作', '节课', '套装', '话术', '纯净版', '日历''txt', 'MP3',
                'mp3', 'WAV', 'CD', '音乐', '专辑', '模板', '书中', '读物', '入门', '零基础', '常识', '电商', '小红书','JPG',
@@ -693,7 +736,9 @@ if __name__ == '__main__':
         "quark": ["【夸克网盘】点击获取","夸克云盘","点击查看"],
         "115": ["115云盘","点击查看"],
         "aliyun": ["【阿里云盘】点击获取","阿里云盘","点击查看"],
-        "others": ["【百度网盘】点击获取","百度网盘","PikPak云盘","点击查看"],
+        "pikpak": ["PikPak云盘","点击查看"],
+        "baidu": ["【百度网盘】点击获取","百度云盘","点击查看"],
+        "others": ["点击查看"],
     }
     # 替换消息中关键字(tag/频道/群组)
     replacements = {
@@ -723,9 +768,9 @@ if __name__ == '__main__':
     # 当频道禁止转发时，是否下载图片发送消息
     fdown = True
     download_folder = 'downloads'
-    api_id = xxx
-    api_hash = 'xxx'
-    string_session = 'xxx'
+    api_id = 6627460
+    api_hash = '27a53a0965e486a2bc1b1fcde473b1c4'
+    string_session = '1BVtsOJgBu4jETuxgyxOlKQk6wtWCvz0n1h72a6C5hRiMzPQAXwUVlPzaCDkOHZSIfFIliqfSl2buDqTsROvrdXy6HLakx7kEFdTRDCBGqClxrKuusgnhc3t8zM_b01YsSscT-YH83mFqB6ItxBiSy8sJbxZKz2kreztcP31edk_a4MU2k_xKZ0R8C8NHu_b6IR9xHRbuNId5x8N9yacsNLGx7_WzObBsOXSaVdjGHhPBQxMqWARFivkrcr10n4hTyFjjO_mQJIuaxd1GSkRNYZaW9Q3qZWaSXOxMgk57fDcoxZbHKRuwk3w5rrBy2j2yRNwnhpLhDDpkoszfFsj2RH_WChvbs2Y='
     # 默认不开启代理
     proxy = None
     # 首次检测自己频道最近checknum条消息去重，后续检测累加已转发的消息数，如果当日转发数超过checknum条，则检测当日转发总数
