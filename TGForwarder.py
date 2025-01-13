@@ -768,9 +768,9 @@ if __name__ == '__main__':
     # 当频道禁止转发时，是否下载图片发送消息
     fdown = True
     download_folder = 'downloads'
-    api_id = 6627460
-    api_hash = '27a53a0965e486a2bc1b1fcde473b1c4'
-    string_session = '1BVtsOJgBu4jETuxgyxOlKQk6wtWCvz0n1h72a6C5hRiMzPQAXwUVlPzaCDkOHZSIfFIliqfSl2buDqTsROvrdXy6HLakx7kEFdTRDCBGqClxrKuusgnhc3t8zM_b01YsSscT-YH83mFqB6ItxBiSy8sJbxZKz2kreztcP31edk_a4MU2k_xKZ0R8C8NHu_b6IR9xHRbuNId5x8N9yacsNLGx7_WzObBsOXSaVdjGHhPBQxMqWARFivkrcr10n4hTyFjjO_mQJIuaxd1GSkRNYZaW9Q3qZWaSXOxMgk57fDcoxZbHKRuwk3w5rrBy2j2yRNwnhpLhDDpkoszfFsj2RH_WChvbs2Y='
+    api_id = xxx
+    api_hash = 'xxx'
+    string_session = 'xxx'
     # 默认不开启代理
     proxy = None
     # 首次检测自己频道最近checknum条消息去重，后续检测累加已转发的消息数，如果当日转发数超过checknum条，则检测当日转发总数
