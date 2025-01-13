@@ -34,7 +34,7 @@ class TGForwarder:
     def __init__(self, api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel,
                  limit, replies_limit, include, exclude, check_replies, proxy, checknum, replacements, channel_match, hyperlink_text, past_years, only_today):
         self.urls_kw = ['magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', 'pan.quark.cn', '115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com','pan.baidu.com','mypikpak.com']
-        self.checkbox = {"links":[],"sizes":[],"chat_forward_count_msg_id":{},"today":"","today_count":0}
+        self.checkbox = {"links":[],"sizes":[],"tgbot_links":{},"chat_forward_count_msg_id":{},"today":"","today_count":0}
         self.checknum = checknum
         self.today_count = checknum
         self.history = 'history.json'
@@ -265,15 +265,24 @@ class TGForwarder:
             # 提取命令和参数
             query_string = url.split('?')[1]
             command, parameter = query_string.split('=')
-            await self.client.send_message(bot_username, f'/{command} {parameter}')
-            # 等待一段时间以便消息到达
-            await asyncio.sleep(2)
-            # 获取最近的消息
-            messages = await self.client.get_messages(bot_username, limit=1)  # 获取最近1条消息
-            # print(f'消息内容: {messages[0].message}')
-            message = messages[0].message
-            links = re.findall(r'(https?://[^\s]+)', message)
-            link = links[0] if links else ''
+            tgbot_links = self.checkbox["tgbot_links"]
+
+            if tgbot_links.get(parameter):
+                link = tgbot_links.get(parameter)
+                return link
+            else:
+                await self.client.send_message(bot_username, f'/{command} {parameter}')
+                # 等待一段时间以便消息到达
+                await asyncio.sleep(2)
+                # 获取最近的消息
+                messages = await self.client.get_messages(bot_username, limit=1)  # 获取最近1条消息
+                # print(f'消息内容: {messages[0].message}')
+                message = messages[0].message
+                links = re.findall(r'(https?://[^\s]+)', message)
+                if links:
+                    link = links[0]
+                    tgbot_links[parameter] = link
+                    self.checkbox["tgbot_links"] = tgbot_links
         except Exception as e:
             print(f'TG_Bot error: {e}')
         return link
@@ -422,6 +431,8 @@ class TGForwarder:
                 if self.checkbox.get('today') == datetime.now().strftime("%Y-%m-%d"):
                     links = self.checkbox['links']
                     sizes = self.checkbox['sizes']
+                else:
+                    self.checkbox["tgbot_links"] = {}
                 self.today_count = self.checkbox.get('today_count') if self.checkbox.get('today_count') else self.checknum
         self.checknum = self.checknum if self.today_count < self.checknum else self.today_count
         chat = await self.client.get_entity(self.forward_to_channel)
@@ -458,7 +469,7 @@ class TGForwarder:
                 text,  # 复制消息文本
                 file=message.media  # 复制消息的媒体文件
             )
-            print("消息复制并发送成功")
+            # print("消息复制并发送成功")
         except Exception as e:
             print(f"操作失败: {e}")
     async def forward_messages(self, chat_name, limit, hlinks, hsizes):
@@ -479,7 +490,6 @@ class TGForwarder:
                     if message_china_time.date() != self.today:
                         continue
                 self.random_wait(200, 1000)
-                forwards = message.forwards
                 if message.media:
                     # 视频
                     if hasattr(message.document, 'mime_type') and self.contains(message.document.mime_type,'video') and self.nocontains(message.message, self.exclude):
@@ -594,8 +604,9 @@ class TGForwarder:
 if __name__ == '__main__':
     channels_groups_monitor = ['Q66Share','NewAliPan','Oscar_4Kmovies','zyfb115','ucwpzy','ikiviyyp','alyp_TV','alyp_4K_Movies','guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan', 'hao115', 'yunpanshare','Aliyun_4K_Movies', 'dianyingshare', 'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx', 'tianyi_pd2', 'ucpanpan', 'kuakeyun', 'ucquark']
     forward_to_channel = 'tgsearchers'
+
     # 监控最近消息数
-    limit = 20
+    limit = 40
     # 监控消息中评论数，有些视频、资源链接被放到评论中
     replies_limit = 1
     include = ['链接', '片名', '名称', '剧名', 'magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn',
