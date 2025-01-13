@@ -713,9 +713,7 @@ class TGForwarder:
 
 if __name__ == '__main__':
     channels_groups_monitor = ['Q66Share','NewAliPan','Oscar_4Kmovies','zyfb115','ucwpzy','ikiviyyp','alyp_TV','alyp_4K_Movies','guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan', 'hao115', 'yunpanshare','Aliyun_4K_Movies', 'dianyingshare', 'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx', 'tianyi_pd2', 'ucpanpan', 'kuakeyun', 'ucquark']
-    channels_groups_monitor = ['debugfish']
     forward_to_channel = 'tgsearchers'
-    forward_to_channel = 'debugfish2'
     # 监控最近消息数
     limit = 20
     # 监控消息中评论数，有些视频、资源链接被放到评论中
