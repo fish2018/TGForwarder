@@ -404,6 +404,43 @@ class TGForwarder:
         end_time = "2025-01-09 08:00"
         with self.client.start():
             self.client.loop.run_until_complete(self.clear_main(start_time, end_time))
+    def categorize_urls(self,urls):
+        """
+        将 URL 按云盘厂商和磁力链接分类并存储到字典中
+        """
+        # 定义分类规则
+        categories = {
+            "magnet": ["magnet"],  # 磁力链接
+            "uc": ["drive.uc.cn"],  # UC
+            "mobile": ["caiyun.139.com"],  # 移动
+            "tianyi": ["cloud.189.cn"],  # 天翼
+            "quark": ["pan.quark.cn"],  # 夸克
+            "115": ["115.com", "anxia.com"],  # 115
+            "aliyun": ["alipan.com", "aliyundrive.com"],  # 阿里云
+            "others": []  # 其他
+        }
+        # 初始化结果字典
+        result = {category: [] for category in categories}
+        # 遍历 URL 列表
+        for url in urls:
+            # 单独处理磁力链接
+            if url.startswith("magnet:"):
+                result["magnet"].append(url)
+                continue
+            # 解析 URL
+            parsed_url = urllib.parse.urlparse(url)
+            domain = parsed_url.netloc.lower()  # 获取域名并转换为小写
+            # 判断 URL 类型
+            categorized = False
+            for category, domains in categories.items():
+                if any(pattern in domain for pattern in domains):
+                    result[category].append(url)
+                    categorized = True
+                    break
+            # 如果未分类，放入 "others"
+            if not categorized:
+                result["others"].append(url)
+        return result
     async def deduplicate_links(self):
         """
         删除聊天中重复链接的旧消息，只保留最新的消息
@@ -414,20 +451,28 @@ class TGForwarder:
         if self.channel_match:
             for rule in self.channel_match:
                 chats.append(rule['target'])
+
         for chat_name in chats:
-            # 用于存储链接和最新消息的ID
+            # 用于存储链接和最新消息的ID（每个聊天单独维护）
             links_dict = {}
             # 用于批量删除的消息ID列表
             messages_to_delete = []
             # 获取聊天实体
             chat = await self.client.get_entity(chat_name)
+            # 获取最近转发的 n 条消息的 ID
+            recent_messages = []
+            async for message in self.client.iter_messages(chat, limit=self.checkbox["today_count"]):
+                recent_messages.append(message.id)
             # 遍历消息
-            async for message in self.client.iter_messages(chat):
+            async for message in self.client.iter_messages(chat, reverse=True):
+                if message.id in recent_messages:
+                    continue
                 if message.message:
                     # 提取消息中的链接
                     links_in_message = re.findall(self.pattern, message.message)
                     if not links_in_message:
                         continue  # 如果消息中没有链接，跳过
+
                     # 检查消息中的链接是否在目标链接列表中
                     for link in links_in_message:
                         if link in target_links:  # 只处理目标链接
@@ -444,6 +489,7 @@ class TGForwarder:
                             else:
                                 # 如果链接不存在，直接记录消息ID
                                 links_dict[link] = message.id
+
             # 批量删除旧消息
             if messages_to_delete:
                 print(f"【{chat_name}】删除 {len(messages_to_delete)} 条历史重复消息")
@@ -623,48 +669,12 @@ class TGForwarder:
         with self.client.start():
             self.client.loop.run_until_complete(self.main())
 
-    def categorize_urls(self,urls):
-        """
-        将 URL 按云盘厂商和磁力链接分类并存储到字典中
-        """
-        # 定义分类规则
-        categories = {
-            "magnet": ["magnet"],  # 磁力链接
-            "uc": ["drive.uc.cn"],  # UC
-            "mobile": ["caiyun.139.com"],  # 移动
-            "tianyi": ["cloud.189.cn"],  # 天翼
-            "quark": ["pan.quark.cn"],  # 夸克
-            "115": ["115.com", "anxia.com"],  # 115
-            "aliyun": ["alipan.com", "aliyundrive.com"],  # 阿里云
-            "others": []  # 其他
-        }
-        # 初始化结果字典
-        result = {category: [] for category in categories}
-        # 遍历 URL 列表
-        for url in urls:
-            # 单独处理磁力链接
-            if url.startswith("magnet:"):
-                result["magnet"].append(url)
-                continue
-            # 解析 URL
-            parsed_url = urllib.parse.urlparse(url)
-            domain = parsed_url.netloc.lower()  # 获取域名并转换为小写
-            # 判断 URL 类型
-            categorized = False
-            for category, domains in categories.items():
-                if any(pattern in domain for pattern in domains):
-                    result[category].append(url)
-                    categorized = True
-                    break
-            # 如果未分类，放入 "others"
-            if not categorized:
-                result["others"].append(url)
-        return result
-
 
 if __name__ == '__main__':
     channels_groups_monitor = ['Q66Share','NewAliPan','Oscar_4Kmovies','zyfb115','ucwpzy','ikiviyyp','alyp_TV','alyp_4K_Movies','guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan', 'hao115', 'yunpanshare','Aliyun_4K_Movies', 'dianyingshare', 'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx', 'tianyi_pd2', 'ucpanpan', 'kuakeyun', 'ucquark']
+    channels_groups_monitor = ['debugfish']
     forward_to_channel = 'tgsearchers'
+    forward_to_channel = 'debugfish2'
     # 监控最近消息数
     limit = 20
     # 监控消息中评论数，有些视频、资源链接被放到评论中
