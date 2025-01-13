@@ -1,9 +1,7 @@
 import os
 import socks
-import shutil
 import random
 import time
-import httpx
 import json
 import re
 import asyncio
@@ -129,8 +127,11 @@ class TGForwarder:
                     if keyword in text:
                         text = text.replace(keyword, url)
         if message.media and isinstance(message.media, MessageMediaPhoto):
-            media = await message.download_media(self.download_folder)
-            await self.client.send_file(target_chat_name, media, caption=self.replace_targets(text))
+            await self.client.send_message(
+                target_chat_name,
+                self.replace_targets(text),  # 复制消息文本
+                file=message.media  # 复制消息的媒体文件
+            )
         else:
             await self.client.send_message(target_chat_name, self.replace_targets(text))
     async def get_peer(self,client, channel_name):
@@ -193,10 +194,6 @@ class TGForwarder:
             min_id=0,
             hash=0
         ))
-        # print(result)
-        # 如果没有消息，返回0
-        #if not result.messages:
-        #    return f'今日共更新【0】条资源'
         # 获取第一条消息的位置
         first_message_pos = result.offset_id_offset
         # 今日消息总数就是从第一条消息到最新消息的距离
@@ -384,36 +381,23 @@ class TGForwarder:
             messages_to_delete = []
             # 获取聊天实体
             chat = await self.client.get_entity(chat_name)
-            # 获取最近转发的 n 条消息的 ID
-            recent_messages = []
-            async for message in self.client.iter_messages(chat, limit=self.checkbox["today_count"]):
-                recent_messages.append(message.id)
             # 遍历消息
-            async for message in self.client.iter_messages(chat, reverse=True):
-                if message.id in recent_messages:
+            async for message in self.client.iter_messages(chat):
+                # if message.id in recent_messages:
+                # 将消息时间转换为中国时区
+                message_china_time = message.date + self.china_timezone_offset
+                # 判断消息日期是否是当天
+                if message_china_time.date() == self.today:
                     continue
                 if message.message:
                     # 提取消息中的链接
                     links_in_message = re.findall(self.pattern, message.message)
                     if not links_in_message:
                         continue  # 如果消息中没有链接，跳过
-
+                    link = links_in_message[0]
                     # 检查消息中的链接是否在目标链接列表中
-                    for link in links_in_message:
-                        if link in target_links:  # 只处理目标链接
-                            if link in links_dict:
-                                # 如果链接已存在，比较消息ID
-                                if message.id > links_dict[link]:
-                                    # 当前消息更新，记录旧消息ID
-                                    messages_to_delete.append(links_dict[link])
-                                    # 更新字典中的消息ID
-                                    links_dict[link] = message.id
-                                else:
-                                    # 当前消息是旧的，记录当前消息ID
-                                    messages_to_delete.append(message.id)
-                            else:
-                                # 如果链接不存在，直接记录消息ID
-                                links_dict[link] = message.id
+                    if link in target_links:  # 只处理目标链接
+                        messages_to_delete.append(message.id)
 
             # 批量删除旧消息
             if messages_to_delete:
@@ -574,8 +558,6 @@ class TGForwarder:
     async def main(self):
         start_time = time.time()
         links,sizes = await self.checkhistory()
-        if not os.path.exists(self.download_folder):
-            os.makedirs(self.download_folder)
         for chat_name in self.channels_groups_monitor:
             limit = self.limit
             if '|' in chat_name:
@@ -585,7 +567,6 @@ class TGForwarder:
             total = 0
             links, sizes = await self.forward_messages(chat_name, limit, links, sizes)
         await self.send_daily_forwarded_count()
-        shutil.rmtree(self.download_folder)
         with open(self.history, 'w+', encoding='utf-8') as f:
             self.checkbox['links'] = list(set(links))[-self.checkbox["today_count"]:]
             self.checkbox['sizes'] = list(set(sizes))[-self.checkbox["today_count"]:]
@@ -606,7 +587,7 @@ if __name__ == '__main__':
     forward_to_channel = 'tgsearchers'
 
     # 监控最近消息数
-    limit = 40
+    limit = 20
     # 监控消息中评论数，有些视频、资源链接被放到评论中
     replies_limit = 1
     include = ['链接', '片名', '名称', '剧名', 'magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn',
