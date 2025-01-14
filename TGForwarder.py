@@ -126,6 +126,8 @@ class TGForwarder:
                 for keyword in keywords:
                     if keyword in text:
                         text = text.replace(keyword, url)
+        if self.nocontains(text, self.urls_kw):
+            return 
         if message.media and isinstance(message.media, MessageMediaPhoto):
             await self.client.send_message(
                 target_chat_name,
@@ -239,12 +241,10 @@ class TGForwarder:
         if message.entities:
             for entity in message.entities:
                 if isinstance(entity, MessageEntityTextUrl):
-                    # if 'https://telegra.ph' in entity.url:
-                    #     continue
                     if 'start' in entity.url:
                         url = await self.tgbot(entity.url)
-                        links.append(url)
-                        return links
+                        if url:
+                            links.append(url)
                     elif self.nocontains(entity.url, self.urls_kw):
                         continue
                     else:
@@ -583,9 +583,8 @@ class TGForwarder:
 
 
 if __name__ == '__main__':
-    channels_groups_monitor = ['Q66Share','NewAliPan','Oscar_4Kmovies','zyfb115','ucwpzy','ikiviyyp','alyp_TV','alyp_4K_Movies','guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan', 'hao115', 'yunpanshare','Aliyun_4K_Movies', 'dianyingshare', 'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx', 'tianyi_pd2', 'ucpanpan', 'kuakeyun', 'ucquark']
+    channels_groups_monitor = ['zaihuayun','Q66Share','NewAliPan','Oscar_4Kmovies','zyfb115','ucwpzy','ikiviyyp','alyp_TV','alyp_4K_Movies','guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan', 'hao115', 'yunpanshare','Aliyun_4K_Movies', 'dianyingshare', 'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx','ucpanpan', 'kuakeyun', 'ucquark']
     forward_to_channel = 'tgsearchers'
-
     # 监控最近消息数
     limit = 20
     # 监控消息中评论数，有些视频、资源链接被放到评论中
