@@ -34,7 +34,7 @@ class TGForwarder:
         self.urls_kw = ['magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', 'pan.quark.cn', '115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com','pan.baidu.com','mypikpak.com']
         self.checkbox = {"links":[],"sizes":[],"tgbot_links":{},"chat_forward_count_msg_id":{},"today":"","today_count":0}
         self.checknum = checknum
-        self.today_count = checknum
+        self.today_count = self.checkbox["today_count"]
         self.history = 'history.json'
         # 正则表达式匹配资源链接
         self.pattern = r"(?:链接：\s*)?((?!https?://t\.me)(?:https?://[^\s'】\n]+|magnet:\?xt=urn:btih:[a-zA-Z0-9]+))"
@@ -200,7 +200,7 @@ class TGForwarder:
         first_message_pos = result.offset_id_offset
         # 今日消息总数就是从第一条消息到最新消息的距离
         today_count = first_message_pos if first_message_pos else 0
-        self.checkbox["today_count"] = today_count
+        self.checkbox["today_count"] = self.checkbox["today_count"] + today_count
         msg = f'今日共更新【{today_count}】条资源'
         return msg
     async def del_channel_forward_count_msg(self):
@@ -385,11 +385,6 @@ class TGForwarder:
             # 遍历消息
             messages = self.client.iter_messages(chat)
             async for message in messages:
-                # # 将消息时间转换为中国时区
-                # message_china_time = message.date + self.china_timezone_offset
-                # # 判断消息日期是否是当天
-                # if message_china_time.date() == self.today:
-                #     continue
                 if message.message:
                     # 提取消息中的链接
                     links_in_message = re.findall(self.pattern, message.message)
@@ -623,7 +618,7 @@ if __name__ == '__main__':
                              "aliyun_share_bot", "AliYunPanBot","None","大风车","雷锋","热心网友"],
         "": ["🦜投稿", "• ", "🐝", "树洞频道", "云盘投稿", "广告合作", "✈️ 画境频道", "🌐 画境官网", "🎁 详情及下载", " - 影巢", 
              "🌍： 群主自用机场: 守候网络, 9折活动!", "🔥： 阿里云盘播放神器: VidHub","🔥： 阿里云盘全能播放神器: VidHub","🔥： 移动云盘免流丝滑挂载播放: VidHub", "画境流媒体播放器-免费看奈飞，迪士尼！",
-             "AIFUN 爱翻 BGP入口极速专线", "AIFUN 爱翻 机场", "from 天翼云盘日更频道","via 匿名","🖼️ 奥斯卡4K蓝光影视站"]
+             "AIFUN 爱翻 BGP入口极速专线", "AIFUN 爱翻 机场", "from 天翼云盘日更频道","via 匿名","🖼️ 奥斯卡4K蓝光影视站","投稿: 点击投稿"]
     }
     # 匹配关键字分发到不同频道/群组，不需要分发直接设置channel_match=[]即可
     # channel_match = [
