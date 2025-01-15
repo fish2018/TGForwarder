@@ -127,7 +127,7 @@ class TGForwarder:
                     if keyword in text:
                         text = text.replace(keyword, url)
         if self.nocontains(text, self.urls_kw):
-            return 
+            return
         if message.media and isinstance(message.media, MessageMediaPhoto):
             await self.client.send_message(
                 target_chat_name,
@@ -369,21 +369,19 @@ class TGForwarder:
         """
         # 将 links 列表转换为集合，方便快速查找
         target_links = set(self.checkbox['links'])
+        if not target_links:
+            return 
         chats = [self.forward_to_channel]
         if self.channel_match:
             for rule in self.channel_match:
                 chats.append(rule['target'])
-
         for chat_name in chats:
-            # 用于存储链接和最新消息的ID（每个聊天单独维护）
-            links_dict = {}
             # 用于批量删除的消息ID列表
             messages_to_delete = []
             # 获取聊天实体
             chat = await self.client.get_entity(chat_name)
             # 遍历消息
             async for message in self.client.iter_messages(chat):
-                # if message.id in recent_messages:
                 # 将消息时间转换为中国时区
                 message_china_time = message.date + self.china_timezone_offset
                 # 判断消息日期是否是当天
@@ -398,7 +396,6 @@ class TGForwarder:
                     # 检查消息中的链接是否在目标链接列表中
                     if link in target_links:  # 只处理目标链接
                         messages_to_delete.append(message.id)
-
             # 批量删除旧消息
             if messages_to_delete:
                 print(f"【{chat_name}】删除 {len(messages_to_delete)} 条历史重复消息")
@@ -416,7 +413,10 @@ class TGForwarder:
                     links = self.checkbox['links']
                     sizes = self.checkbox['sizes']
                 else:
+                    self.checkbox['links'] = []
+                    self.checkbox['sizes'] = []
                     self.checkbox["tgbot_links"] = {}
+                    self.checkbox["today_count"] = 0
                 self.today_count = self.checkbox.get('today_count') if self.checkbox.get('today_count') else self.checknum
         self.checknum = self.checknum if self.today_count < self.checknum else self.today_count
         chat = await self.client.get_entity(self.forward_to_channel)
