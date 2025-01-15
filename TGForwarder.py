@@ -32,7 +32,7 @@ class TGForwarder:
     def __init__(self, api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel,
                  limit, replies_limit, include, exclude, check_replies, proxy, checknum, replacements, channel_match, hyperlink_text, past_years, only_today):
         self.urls_kw = ['magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', 'pan.quark.cn', '115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com','pan.baidu.com','mypikpak.com']
-        self.checkbox = {"links":[],"sizes":[],"tgbot_links":{},"chat_forward_count_msg_id":{},"today":"","today_count":0}
+        self.checkbox = {"links":[],"sizes":[],"bot_links":{},"chat_forward_count_msg_id":{},"today":"","today_count":0}
         self.checknum = checknum
         self.today_count = 0
         self.history = 'history.json'
@@ -263,10 +263,10 @@ class TGForwarder:
             # 提取命令和参数
             query_string = url.split('?')[1]
             command, parameter = query_string.split('=')
-            tgbot_links = self.checkbox["tgbot_links"]
+            bot_links = self.checkbox["bot_links"]
 
-            if tgbot_links.get(parameter):
-                link = tgbot_links.get(parameter)
+            if bot_links.get(parameter):
+                link = bot_links.get(parameter)
                 return link
             else:
                 await self.client.send_message(bot_username, f'/{command} {parameter}')
@@ -279,8 +279,8 @@ class TGForwarder:
                 links = re.findall(r'(https?://[^\s]+)', message)
                 if links:
                     link = links[0]
-                    tgbot_links[parameter] = link
-                    self.checkbox["tgbot_links"] = tgbot_links
+                    bot_links[parameter] = link
+                    self.checkbox["bot_links"] = bot_links
         except Exception as e:
             print(f'TG_Bot error: {e}')
         return link
@@ -417,7 +417,7 @@ class TGForwarder:
                 else:
                     self.checkbox['links'] = []
                     self.checkbox['sizes'] = []
-                    self.checkbox["tgbot_links"] = {}
+                    self.checkbox["bot_links"] = {}
                     self.checkbox["today_count"] = 0
                 self.today_count = self.checkbox.get('today_count') if self.checkbox.get('today_count') else self.checknum
         self.checknum = self.checknum if self.today_count < self.checknum else self.today_count
@@ -635,8 +635,8 @@ if __name__ == '__main__':
     # 消息中不含关键词图文，但有些资源被放到消息评论中，如果需要监控评论中资源，需要开启，否则建议关闭
     check_replies = False
     # 是否下载图片发送消息
-    api_id = xxx
-    api_hash = 'xxx'
+    api_id = 6627460
+    api_hash = '27a53a0965e486a2bc1b1fcde473b1c4'
     string_session = 'xxx'
     # 默认不开启代理
     proxy = None
