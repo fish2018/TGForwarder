@@ -34,7 +34,7 @@ class TGForwarder:
         self.urls_kw = ['magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', 'pan.quark.cn', '115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com','pan.baidu.com','mypikpak.com']
         self.checkbox = {"links":[],"sizes":[],"tgbot_links":{},"chat_forward_count_msg_id":{},"today":"","today_count":0}
         self.checknum = checknum
-        self.today_count = self.checkbox["today_count"]
+        self.today_count = 0
         self.history = 'history.json'
         # 正则表达式匹配资源链接
         self.pattern = r"(?:链接：\s*)?((?!https?://t\.me)(?:https?://[^\s'】\n]+|magnet:\?xt=urn:btih:[a-zA-Z0-9]+))"
@@ -200,9 +200,8 @@ class TGForwarder:
         first_message_pos = result.offset_id_offset
         # 今日消息总数就是从第一条消息到最新消息的距离
         today_count = first_message_pos if first_message_pos else 0
-        self.checkbox["today_count"] = self.checkbox["today_count"] + today_count
         msg = f'今日共更新【{today_count}】条资源'
-        return msg
+        return msg,today_count
     async def del_channel_forward_count_msg(self):
         # 删除消息
         chat_forward_count_msg_id = self.checkbox.get("chat_forward_count_msg_id")
@@ -221,8 +220,9 @@ class TGForwarder:
         await self.del_channel_forward_count_msg()
 
         chat_forward_count_msg_id = {}
-        msg = await self.daily_forwarded_count(self.forward_to_channel)
+        msg,tc = await self.daily_forwarded_count(self.forward_to_channel)
         sent_message = await self.client.send_message(self.forward_to_channel, msg)
+        self.checkbox["today_count"] = tc
         # 置顶消息
         await self.client.pin_message(self.forward_to_channel, sent_message.id)
         await self.client.delete_messages(self.forward_to_channel, [sent_message.id + 1])
@@ -230,8 +230,9 @@ class TGForwarder:
         chat_forward_count_msg_id[self.forward_to_channel] = sent_message.id
         if self.channel_match:
             for rule in self.channel_match:
-                m = await self.daily_forwarded_count(rule['target'])
+                m,t = await self.daily_forwarded_count(rule['target'])
                 sm = await self.client.send_message(rule['target'], m)
+                self.checkbox["today_count"] = self.checkbox["today_count"] + t
                 chat_forward_count_msg_id[rule['target']] = sm.id
                 await self.client.pin_message(rule['target'], sm.id)
                 await self.client.delete_messages(rule['target'], [sm.id+1])
