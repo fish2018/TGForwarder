@@ -376,17 +376,20 @@ class TGForwarder:
             for rule in self.channel_match:
                 chats.append(rule['target'])
         for chat_name in chats:
+            # 已经存在的link
+            links_exist = set()
             # 用于批量删除的消息ID列表
             messages_to_delete = []
             # 获取聊天实体
             chat = await self.client.get_entity(chat_name)
             # 遍历消息
-            async for message in self.client.iter_messages(chat):
-                # 将消息时间转换为中国时区
-                message_china_time = message.date + self.china_timezone_offset
-                # 判断消息日期是否是当天
-                if message_china_time.date() == self.today:
-                    continue
+            messages = self.client.iter_messages(chat)
+            async for message in messages:
+                # # 将消息时间转换为中国时区
+                # message_china_time = message.date + self.china_timezone_offset
+                # # 判断消息日期是否是当天
+                # if message_china_time.date() == self.today:
+                #     continue
                 if message.message:
                     # 提取消息中的链接
                     links_in_message = re.findall(self.pattern, message.message)
@@ -395,7 +398,10 @@ class TGForwarder:
                     link = links_in_message[0]
                     # 检查消息中的链接是否在目标链接列表中
                     if link in target_links:  # 只处理目标链接
-                        messages_to_delete.append(message.id)
+                        if link in links_exist:
+                            messages_to_delete.append(message.id)
+                        else:
+                            links_exist.add(link)
             # 批量删除旧消息
             if messages_to_delete:
                 print(f"【{chat_name}】删除 {len(messages_to_delete)} 条历史重复消息")
@@ -623,8 +629,8 @@ if __name__ == '__main__':
     # channel_match = [
     #     {
     #         'include': ['pan.quark.cn'],  # 包含这些关键词
-    #         'exclude': ['无损音乐','音乐','动漫','动画','国漫','日漫','美漫','漫画','真人秀','综艺','韩综'],  # 排除这些关键词
-    #         'target': 'kuake'  # 转发到目标频道/群组
+    #         'exclude': ['mp3'],  # 排除这些关键词
+    #         'target': 'quark'  # 转发到目标频道/群组
     #     }
     # ]
     channel_match = []
