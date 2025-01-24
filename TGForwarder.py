@@ -630,14 +630,12 @@ if __name__ == '__main__':
     message_md = (
         "**Github：** [https://github.com/fish2018](https://github.com/fish2018)\n\n"
         "**推荐播放器：** [影视](https://t.me/ys_tvb)\n\n"
-        "**PG接口：**\n"
-        "http://www.fish2018.us.kg/p/jsm.json\n"
-        "**备用：**\n"
-        "https://cnb.cool/fish2018/pg/-/git/raw/master/jsm.json\n\n"
-        "**真心接口：**\n"
-        "http://www.fish2018.us.kg/z/FongMi.json\n"
-        "**备用：**\n"
-        "https://cnb.cool/fish2018/zx/-/git/raw/master/FongMi.json\n\n"
+        "**[PG接口](https://t.me/pandagroovechat)：    [备用接口](https://cnb.cool/fish2018/pg/-/git/raw/master/jsm.json)  [tgsearch服务器](http://tg.fish2018.us.kg)**\n\n"
+        "```http://www.fish2018.us.kg/p/jsm.json```\n\n"
+        "**[真心接口](https://t.me/juejijianghuchat)：   [备用接口](https://cnb.cool/fish2018/zx/-/git/raw/master/FongMi.json)   [tgsou服务器](http://tgsou.fish2018.us.kg)**\n\n"
+        "```http://www.fish2018.us.kg/z/FongMi.json```\n\n"
+        "**[ClashForge](https://github.com/fish2018/ClashForge)**\n"
+        "**clash代理节点全自动采集、去重、批量检测、移除失效节点，按延迟/下载速度排序，支持mac、linux、windows**\n\n"
     )
     # 匹配关键字分发到不同频道/群组，不需要分发直接设置channel_match=[]即可
     # channel_match = [
