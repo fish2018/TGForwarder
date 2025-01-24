@@ -30,7 +30,7 @@ if os.environ.get("HTTP_PROXY"):
 
 class TGForwarder:
     def __init__(self, api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel,
-                 limit, replies_limit, include, exclude, check_replies, proxy, checknum, replacements, channel_match, hyperlink_text, past_years, only_today):
+                 limit, replies_limit, include, exclude, check_replies, proxy, checknum, replacements, message_md, channel_match, hyperlink_text, past_years, only_today):
         self.urls_kw = ['magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', 'pan.quark.cn', '115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com','pan.baidu.com','mypikpak.com']
         self.checkbox = {"links":[],"sizes":[],"bot_links":{},"chat_forward_count_msg_id":{},"today":"","today_count":0}
         self.checknum = checknum
@@ -60,6 +60,7 @@ class TGForwarder:
         self.only_today = only_today
         self.hyperlink_text = hyperlink_text
         self.replacements = replacements
+        self.message_md = message_md
         self.channel_match = channel_match
         self.check_replies = check_replies
         self.download_folder = 'downloads'
@@ -200,7 +201,8 @@ class TGForwarder:
         first_message_pos = result.offset_id_offset
         # 今日消息总数就是从第一条消息到最新消息的距离
         today_count = first_message_pos if first_message_pos else 0
-        msg = f'今日共更新【{today_count}】条资源'
+        msg = f'**今日共更新【{today_count}】条资源 **\n\n'
+        msg = msg + self.message_md
         return msg,today_count
     async def del_channel_forward_count_msg(self):
         # 删除消息
@@ -221,7 +223,7 @@ class TGForwarder:
 
         chat_forward_count_msg_id = {}
         msg,tc = await self.daily_forwarded_count(self.forward_to_channel)
-        sent_message = await self.client.send_message(self.forward_to_channel, msg)
+        sent_message = await self.client.send_message(self.forward_to_channel, msg , parse_mode='md')
         self.checkbox["today_count"] = tc
         # 置顶消息
         await self.client.pin_message(self.forward_to_channel, sent_message.id)
@@ -575,7 +577,7 @@ class TGForwarder:
             self.checkbox['today'] = datetime.now().strftime("%Y-%m-%d")
             f.write(json.dumps(self.checkbox))
         # 调用函数，删除重复链接的旧消息
-        await self.deduplicate_links()
+        # await self.deduplicate_links()
         await self.client.disconnect()
         end_time = time.time()
         print(f'耗时: {end_time - start_time} 秒')
@@ -585,7 +587,9 @@ class TGForwarder:
 
 
 if __name__ == '__main__':
-    channels_groups_monitor = ['zaihuayun','Q66Share','NewAliPan','Oscar_4Kmovies','zyfb115','ucwpzy','ikiviyyp','alyp_TV','alyp_4K_Movies','guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan', 'hao115', 'yunpanshare','Aliyun_4K_Movies', 'dianyingshare', 'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx','ucpanpan', 'kuakeyun', 'ucquark']
+    channels_groups_monitor = ['MCPH086','zaihuayun','Q66Share','NewAliPan','Oscar_4Kmovies','zyfb115','ucwpzy','ikiviyyp','alyp_TV','alyp_4K_Movies',
+                               'guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan', 'hao115', 'yunpanshare','Aliyun_4K_Movies', 'dianyingshare', 
+                               'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx','ucpanpan', 'kuakeyun', 'ucquark']
     forward_to_channel = 'tgsearchers'
     # 监控最近消息数
     limit = 20
@@ -593,11 +597,11 @@ if __name__ == '__main__':
     replies_limit = 1
     include = ['链接', '片名', '名称', '剧名', 'magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn',
                'pan.quark.cn', '115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com', '夸克云盘', '阿里云盘', '磁力链接']
-    exclude = ['小程序', '预告', '预感', '盈利', '即可观看', '书籍', '电子书', '图书', '丛书', 'app','软件', '破解版',
-               '免安装', '免广告','安卓', 'Android', '课程', '作品', '教程', '教学', '全书', '名著', 'mobi', 'MOBI', 'epub',
+    exclude = ['小程序', '预告', '预感', '盈利', '即可观看', '书籍', '电子书', '图书', '丛书', '期刊','app','软件', '破解版','解锁','专业版','高级版','最新版','食谱',
+               '免安装', '免广告','安卓', 'Android', '课程', '作品', '教程', '教学', '全书', '名著', 'mobi', 'MOBI', 'epub','任天堂','PC','单机游戏',
                'pdf', 'PDF', 'PPT', '抽奖', '完整版', '有声书','读者','文学', '写作', '节课', '套装', '话术', '纯净版', '日历''txt', 'MP3',
-               'mp3', 'WAV', 'CD', '音乐', '专辑', '模板', '书中', '读物', '入门', '零基础', '常识', '电商', '小红书','JPG',
-               '抖音', '资料', '华为', '短剧', '纪录片', '记录片', '纪录', '纪实', '学习', '付费', '小学', '初中','数学', '语文']
+               'mp3', 'WAV', 'CD', '音乐', '专辑', '模板', '书中', '读物', '入门', '零基础', '常识', '电商', '小红书','JPG','短视频','工作总结',
+               '写真','抖音', '资料', '华为', '短剧', '纪录片', '记录片', '纪录', '纪实', '学习', '付费', '小学', '初中','数学', '语文']
     # 消息中的超链接文字，如果存在超链接，会用url替换文字
     hyperlink_text = {
         "magnet": ["点击查看"],
@@ -619,8 +623,22 @@ if __name__ == '__main__':
                              "aliyun_share_bot", "AliYunPanBot","None","大风车","雷锋","热心网友"],
         "": ["🦜投稿", "• ", "🐝", "树洞频道", "云盘投稿", "广告合作", "✈️ 画境频道", "🌐 画境官网", "🎁 详情及下载", " - 影巢", 
              "🌍： 群主自用机场: 守候网络, 9折活动!", "🔥： 阿里云盘播放神器: VidHub","🔥： 阿里云盘全能播放神器: VidHub","🔥： 移动云盘免流丝滑挂载播放: VidHub", "画境流媒体播放器-免费看奈飞，迪士尼！",
-             "AIFUN 爱翻 BGP入口极速专线", "AIFUN 爱翻 机场", "from 天翼云盘日更频道","via 匿名","🖼️ 奥斯卡4K蓝光影视站","投稿: 点击投稿"]
+             "AIFUN 爱翻 BGP入口极速专线", "AIFUN 爱翻 机场", "from 天翼云盘日更频道","via 匿名","🖼️ 奥斯卡4K蓝光影视站","投稿: 点击投稿","────────────────","【1】需要迅雷云盘链接请进群，我会加入更新",
+             "【2】求随手单点频道内容，点赞❤️👍等表情","【3】帮找❗️资源（别客气）","【4】目前共4个频道，分类内容发布↓","【5】更多请看简介［含™「莫愁片海•拾贝十倍」社群］与🐧/🌏正式群"]
     }
+    # 自定义统计置顶消息，markdown格式
+    message_md = (
+        "**Github：** [https://github.com/fish2018](https://github.com/fish2018)\n\n"
+        "**推荐播放器：** [影视](https://t.me/ys_tvb)\n\n"
+        "**PG接口：**\n"
+        "http://www.fish2018.us.kg/p/jsm.json\n"
+        "**备用：**\n"
+        "https://cnb.cool/fish2018/pg/-/git/raw/master/jsm.json\n\n"
+        "**真心接口：**\n"
+        "http://www.fish2018.us.kg/z/FongMi.json\n"
+        "**备用：**\n"
+        "https://cnb.cool/fish2018/zx/-/git/raw/master/FongMi.json\n\n"
+    )
     # 匹配关键字分发到不同频道/群组，不需要分发直接设置channel_match=[]即可
     # channel_match = [
     #     {
@@ -647,4 +665,4 @@ if __name__ == '__main__':
     # 只允许转发当日的
     only_today = True
     TGForwarder(api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel, limit, replies_limit,
-                include,exclude, check_replies, proxy, checknum, replacements,channel_match, hyperlink_text, past_years, only_today).run()
+                include,exclude, check_replies, proxy, checknum, replacements,message_md,channel_match, hyperlink_text, past_years, only_today).run()
