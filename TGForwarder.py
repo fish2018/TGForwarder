@@ -577,7 +577,7 @@ class TGForwarder:
             self.checkbox['today'] = datetime.now().strftime("%Y-%m-%d")
             f.write(json.dumps(self.checkbox))
         # 调用函数，删除重复链接的旧消息
-        # await self.deduplicate_links()
+        await self.deduplicate_links()
         await self.client.disconnect()
         end_time = time.time()
         print(f'耗时: {end_time - start_time} 秒')
@@ -587,7 +587,7 @@ class TGForwarder:
 
 
 if __name__ == '__main__':
-    channels_groups_monitor = ['MCPH086','zaihuayun','Q66Share','NewAliPan','Oscar_4Kmovies','zyfb115','ucwpzy','ikiviyyp','alyp_TV','alyp_4K_Movies',
+    channels_groups_monitor = ['yunpanall','MCPH086','zaihuayun','Q66Share','NewAliPan','Oscar_4Kmovies','zyfb115','ucwpzy','ikiviyyp','alyp_TV','alyp_4K_Movies',
                                'guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan', 'hao115', 'yunpanshare','Aliyun_4K_Movies', 'dianyingshare', 
                                'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx','ucpanpan', 'kuakeyun', 'ucquark']
     forward_to_channel = 'tgsearchers'
@@ -617,11 +617,11 @@ if __name__ == '__main__':
     }
     # 替换消息中关键字(tag/频道/群组)
     replacements = {
-        forward_to_channel: ["NewAliPan","ucquark", "uckuake", "yunpanshare", "yunpangroup", "Quark_0", "Quark_Movies",
+        forward_to_channel: ["yunpanall","NewAliPan","ucquark", "uckuake", "yunpanshare", "yunpangroup", "Quark_0", "Quark_Movies",
                              "guaguale115", "Aliyundrive_Share_Channel", "alyd_g", "shareAliyun", "aliyundriveShare",
                              "hao115", "Mbox115", "NewQuark", "Quark_Share_Group", "QuarkRobot", "memosfanfan_bot",
                              "aliyun_share_bot", "AliYunPanBot","None","大风车","雷锋","热心网友"],
-        "": ["🦜投稿", "• ", "🐝", "树洞频道", "云盘投稿", "广告合作", "✈️ 画境频道", "🌐 画境官网", "🎁 详情及下载", " - 影巢", 
+        "": ["🦜投稿", "• ", "🐝", "树洞频道", "云盘投稿", "广告合作", "✈️ 画境频道", "🌐 画境官网", "🎁 详情及下载", " - 影巢", "帮助咨询",
              "🌍： 群主自用机场: 守候网络, 9折活动!", "🔥： 阿里云盘播放神器: VidHub","🔥： 阿里云盘全能播放神器: VidHub","🔥： 移动云盘免流丝滑挂载播放: VidHub", "画境流媒体播放器-免费看奈飞，迪士尼！",
              "AIFUN 爱翻 BGP入口极速专线", "AIFUN 爱翻 机场", "from 天翼云盘日更频道","via 匿名","🖼️ 奥斯卡4K蓝光影视站","投稿: 点击投稿","────────────────","【1】需要迅雷云盘链接请进群，我会加入更新",
              "【2】求随手单点频道内容，点赞❤️👍等表情","【3】帮找❗️资源（别客气）","【4】目前共4个频道，分类内容发布↓","【5】更多请看简介［含™「莫愁片海•拾贝十倍」社群］与🐧/🌏正式群"]
