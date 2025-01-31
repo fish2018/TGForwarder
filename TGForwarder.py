@@ -268,7 +268,7 @@ class TGForwarder:
             bot_links = self.checkbox["bot_links"]
 
             if bot_links.get(parameter):
-                # link = bot_links.get(parameter)
+                link = bot_links.get(parameter)
                 return link
             else:
                 await self.client.send_message(bot_username, f'/{command} {parameter}')
