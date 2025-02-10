@@ -31,7 +31,7 @@ if os.environ.get("HTTP_PROXY"):
 class TGForwarder:
     def __init__(self, api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel,
                  limit, replies_limit, include, exclude, check_replies, proxy, checknum, replacements, message_md, channel_match, hyperlink_text, past_years, only_today):
-        self.urls_kw = ['magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', 'pan.quark.cn', '115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com','pan.baidu.com','mypikpak.com']
+        self.urls_kw = ['magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', 'pan.quark.cn', '115cdn.com','115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com','pan.baidu.com','mypikpak.com']
         self.checkbox = {"links":[],"sizes":[],"bot_links":{},"chat_forward_count_msg_id":{},"today":"","today_count":0}
         self.checknum = checknum
         self.today_count = 0
@@ -338,7 +338,7 @@ class TGForwarder:
             "mobile": ["caiyun.139.com"],  # 移动
             "tianyi": ["cloud.189.cn"],  # 天翼
             "quark": ["pan.quark.cn"],  # 夸克
-            "115": ["115.com", "anxia.com"],  # 115
+            "115": ["115cdn.com","115.com", "anxia.com"],  # 115
             "aliyun": ["alipan.com", "aliyundrive.com"],  # 阿里云
             "pikpak": ["mypikpak.com"],
             "baidu": ["pan.baidu.com"],
@@ -366,12 +366,12 @@ class TGForwarder:
             if not categorized:
                 result["others"].append(url)
         return result
-    async def deduplicate_links(self):
+    async def deduplicate_links(self,links=[]):
         """
         删除聊天中重复链接的旧消息，只保留最新的消息
         """
         # 将 links 列表转换为集合，方便快速查找
-        target_links = set(self.checkbox['links'])
+        target_links = set(self.checkbox['links']) if not links else links
         if not target_links:
             return 
         chats = [self.forward_to_channel]
@@ -587,16 +587,14 @@ class TGForwarder:
 
 
 if __name__ == '__main__':
-    channels_groups_monitor = ['yunpanall','MCPH086','zaihuayun','Q66Share','NewAliPan','Oscar_4Kmovies','zyfb115','ucwpzy','ikiviyyp','alyp_TV','alyp_4K_Movies',
-                               'guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan', 'hao115', 'yunpanshare','Aliyun_4K_Movies', 'dianyingshare', 
-                               'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx','ucpanpan', 'kuakeyun', 'ucquark']
+    channels_groups_monitor = ['yunpanall','MCPH086','zaihuayun','Q66Share','NewAliPan','Oscar_4Kmovies','zyfb115','ucwpzy','ikiviyyp','alyp_TV','alyp_4K_Movies','guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan', 'hao115', 'yunpanshare','Aliyun_4K_Movies', 'dianyingshare', 'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx','ucpanpan', 'kuakeyun', 'ucquark']
     forward_to_channel = 'tgsearchers'
     # 监控最近消息数
-    limit = 20
+    limit = 2
     # 监控消息中评论数，有些视频、资源链接被放到评论中
     replies_limit = 1
     include = ['链接', '片名', '名称', '剧名', 'magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn',
-               'pan.quark.cn', '115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com', '夸克云盘', '阿里云盘', '磁力链接']
+               'pan.quark.cn', '115cdn.com','115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com', '夸克云盘', '阿里云盘', '磁力链接']
     exclude = ['小程序', '预告', '预感', '盈利', '即可观看', '书籍', '电子书', '图书', '丛书', '期刊','app','软件', '破解版','解锁','专业版','高级版','最新版','食谱',
                '免安装', '免广告','安卓', 'Android', '课程', '作品', '教程', '教学', '全书', '名著', 'mobi', 'MOBI', 'epub','任天堂','PC','单机游戏',
                'pdf', 'PDF', 'PPT', '抽奖', '完整版', '有声书','读者','文学', '写作', '节课', '套装', '话术', '纯净版', '日历''txt', 'MP3',
@@ -617,10 +615,10 @@ if __name__ == '__main__':
     }
     # 替换消息中关键字(tag/频道/群组)
     replacements = {
-        forward_to_channel: ["yunpanall","NewAliPan","ucquark", "uckuake", "yunpanshare", "yunpangroup", "Quark_0", "Quark_Movies",
+        forward_to_channel: ["yunpanall","NewAliPan","ucquark", "uckuake", "yunpanshare", "yunpangroup", "Quark_0",
                              "guaguale115", "Aliyundrive_Share_Channel", "alyd_g", "shareAliyun", "aliyundriveShare",
                              "hao115", "Mbox115", "NewQuark", "Quark_Share_Group", "QuarkRobot", "memosfanfan_bot",
-                             "aliyun_share_bot", "AliYunPanBot","None","大风车","雷锋","热心网友"],
+                             "Quark_Movies", "aliyun_share_bot", "AliYunPanBot","None","大风车","雷锋","热心网友"],
         "": ["🦜投稿", "• ", "🐝", "树洞频道", "云盘投稿", "广告合作", "✈️ 画境频道", "🌐 画境官网", "🎁 详情及下载", " - 影巢", "帮助咨询",
              "🌍： 群主自用机场: 守候网络, 9折活动!", "🔥： 阿里云盘播放神器: VidHub","🔥： 阿里云盘全能播放神器: VidHub","🔥： 移动云盘免流丝滑挂载播放: VidHub", "画境流媒体播放器-免费看奈飞，迪士尼！",
              "AIFUN 爱翻 BGP入口极速专线", "AIFUN 爱翻 机场", "from 天翼云盘日更频道","via 匿名","🖼️ 奥斯卡4K蓝光影视站","投稿: 点击投稿","────────────────","【1】需要迅雷云盘链接请进群，我会加入更新",
