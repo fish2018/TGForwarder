@@ -31,7 +31,7 @@ if os.environ.get("HTTP_PROXY"):
 class TGForwarder:
     def __init__(self, api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel,
                  limit, replies_limit, include, exclude, check_replies, proxy, checknum, replacements, message_md, channel_match, hyperlink_text, past_years, only_today):
-        self.urls_kw = ['magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', 'pan.quark.cn', '115cdn.com','115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com','pan.baidu.com','mypikpak.com']
+        self.urls_kw = ['magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', 'pan.quark.cn', '115cdn.com','115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com','pan.baidu.com','mypikpak.com','123684.com']
         self.checkbox = {"links":[],"sizes":[],"bot_links":{},"chat_forward_count_msg_id":{},"today":"","today_count":0}
         self.checknum = checknum
         self.today_count = 0
@@ -342,6 +342,7 @@ class TGForwarder:
             "aliyun": ["alipan.com", "aliyundrive.com"],  # 阿里云
             "pikpak": ["mypikpak.com"],
             "baidu": ["pan.baidu.com"],
+            "123": ["123684.com"],
             "others": []  # 其他
         }
         # 初始化结果字典
@@ -587,16 +588,16 @@ class TGForwarder:
 
 
 if __name__ == '__main__':
-    channels_groups_monitor = ['yunpanall','MCPH086','zaihuayun','Q66Share','NewAliPan','Oscar_4Kmovies','zyfb115','ucwpzy','ikiviyyp','alyp_TV','alyp_4K_Movies','guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan', 'hao115', 'yunpanshare','Aliyun_4K_Movies', 'dianyingshare', 'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx','ucpanpan', 'kuakeyun', 'ucquark']
+    channels_groups_monitor = ['xx123pan','pan123_share','yunpanall','MCPH086','zaihuayun','Q66Share','NewAliPan','Oscar_4Kmovies','zyfb115','ucwpzy','ikiviyyp','alyp_TV','alyp_4K_Movies','guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan', 'hao115', 'yunpanshare','Aliyun_4K_Movies', 'dianyingshare', 'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx','ucpanpan', 'kuakeyun', 'ucquark']
     forward_to_channel = 'tgsearchers'
     # 监控最近消息数
-    limit = 2
+    limit = 20
     # 监控消息中评论数，有些视频、资源链接被放到评论中
     replies_limit = 1
-    include = ['链接', '片名', '名称', '剧名', 'magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn',
+    include = ['链接', '片名', '名称', '剧名', 'magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', '123684.com',
                'pan.quark.cn', '115cdn.com','115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com', '夸克云盘', '阿里云盘', '磁力链接']
-    exclude = ['小程序', '预告', '预感', '盈利', '即可观看', '出版社出版','书籍', '电子书', '图书', '丛书', '期刊','app','软件', '破解版','解锁','专业版','高级版','最新版','食谱',
-               '免安装', '免广告','安卓', 'Android', '课程', '作品', '教程', '教学', '全书', '名著', 'mobi', 'MOBI', 'epub','任天堂','PC','单机游戏', '考研英语',
+    exclude = ['小程序', '预告', '预感', '盈利', '即可观看', '书籍', '电子书', '图书', '丛书', '期刊','app','软件', '破解版','解锁','专业版','高级版','最新版','食谱',
+               '免安装', '免广告','安卓', 'Android', '课程', '作品', '教程', '教学', '全书', '名著', 'mobi', 'MOBI', 'epub','任天堂','PC','单机游戏',
                'pdf', 'PDF', 'PPT', '抽奖', '完整版', '有声书','读者','文学', '写作', '节课', '套装', '话术', '纯净版', '日历''txt', 'MP3',
                'mp3', 'WAV', 'CD', '音乐', '专辑', '模板', '书中', '读物', '入门', '零基础', '常识', '电商', '小红书','JPG','短视频','工作总结',
                '写真','抖音', '资料', '华为', '短剧', '纪录片', '记录片', '纪录', '纪实', '学习', '付费', '小学', '初中','数学', '语文']
@@ -611,6 +612,7 @@ if __name__ == '__main__':
         "aliyun": ["【阿里云盘】点击获取","阿里云盘","点击查看"],
         "pikpak": ["PikPak云盘","点击查看"],
         "baidu": ["【百度网盘】点击获取","百度云盘","点击查看"],
+        "123": ["点击查看"],
         "others": ["点击查看"],
     }
     # 替换消息中关键字(tag/频道/群组)
@@ -618,22 +620,24 @@ if __name__ == '__main__':
         forward_to_channel: ["yunpanall","NewAliPan","ucquark", "uckuake", "yunpanshare", "yunpangroup", "Quark_0",
                              "guaguale115", "Aliyundrive_Share_Channel", "alyd_g", "shareAliyun", "aliyundriveShare",
                              "hao115", "Mbox115", "NewQuark", "Quark_Share_Group", "QuarkRobot", "memosfanfan_bot",
-                             "Quark_Movies", "aliyun_share_bot", "AliYunPanBot","None","大风车","雷锋","热心网友"],
-        "": ["🦜投稿", "• ", "🐝", "树洞频道", "云盘投稿", "广告合作", "✈️ 画境频道", "🌐 画境官网", "🎁 详情及下载", " - 影巢", "帮助咨询",
+                             "Quark_Movies", "aliyun_share_bot", "AliYunPanBot","None","大风车","雷锋","热心网友","xx123pan","xx123pan1"],
+        "": ["🦜投稿", "• ", "🐝", "树洞频道", "云盘投稿", "广告合作", "✈️ 画境频道", "🌐 画境官网", "🎁 详情及下载", " - 影巢", "帮助咨询", "🌈 分享人: 自动发布","分享者：123盘社区",
              "🌍： 群主自用机场: 守候网络, 9折活动!", "🔥： 阿里云盘播放神器: VidHub","🔥： 阿里云盘全能播放神器: VidHub","🔥： 移动云盘免流丝滑挂载播放: VidHub", "画境流媒体播放器-免费看奈飞，迪士尼！",
              "AIFUN 爱翻 BGP入口极速专线", "AIFUN 爱翻 机场", "from 天翼云盘日更频道","via 匿名","🖼️ 奥斯卡4K蓝光影视站","投稿: 点击投稿","────────────────","【1】需要迅雷云盘链接请进群，我会加入更新",
              "【2】求随手单点频道内容，点赞❤️👍等表情","【3】帮找❗️资源，好片源（别客气）","【4】目前共4个频道，分类内容发布↓","【5】更多请看简介［含™「莫愁片海•拾贝十倍」社群］与🐧/🌏正式群"]
     }
     # 自定义统计置顶消息，markdown格式
     message_md = (
-        "**Github：** [https://github.com/fish2018](https://github.com/fish2018)\n\n"
-        "**推荐播放器：** [影视](https://t.me/ys_tvb)\n\n"
-        "**[PG接口](https://t.me/pandagroovechat)：    [备用接口](https://cnb.cool/fish2018/pg/-/git/raw/master/jsm.json)  [tgsearch服务器](http://tg.fish2018.us.kg)**\n\n"
-        "```http://www.fish2018.us.kg/p/jsm.json```\n\n"
-        "**[真心接口](https://t.me/juejijianghuchat)：   [备用接口](https://cnb.cool/fish2018/zx/-/git/raw/master/FongMi.json)   [tgsou服务器](http://tgsou.fish2018.us.kg)**\n\n"
-        "```http://www.fish2018.us.kg/z/FongMi.json```\n\n"
-        "**[ClashForge](https://github.com/fish2018/ClashForge)**\n"
-        "**clash代理节点全自动采集、去重、批量检测、移除失效节点，按延迟/下载速度排序，支持mac、linux、windows**\n\n"
+        "**Github：[https://github.com/fish2018](https://github.com/fish2018)**\n\n"
+        "**推荐播放器：   [影视](https://t.me/ys_tvb)**\n\n"
+        "**PG接口：    [备用1](https://cnb.cool/fish2018/pg/-/git/raw/master/jsm.json)   [备用2](http://www.fish2018.ip-ddns.com/p/jsm.json) **"
+        "```http://www.fish2018.us.kg/p/jsm.json```"
+        "**tgsearch服务器：    [备用](http://tg.fish2018.ip-ddns.com)**"
+        "```http://tg.fish2018.us.kg```"
+        "**真心接口：    [备用](https://cnb.cool/fish2018/zx/-/git/raw/master/FongMi.json)**"
+        "```http://www.fish2018.us.kg/z/FongMi.json```"
+        "**tgsou服务器：**"
+        "```http://tgsou.fish2018.us.kg```"
     )
     # 匹配关键字分发到不同频道/群组，不需要分发直接设置channel_match=[]即可
     # channel_match = [
