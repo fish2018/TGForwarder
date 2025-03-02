@@ -636,7 +636,7 @@ if __name__ == '__main__':
         "```http://tg.fish2018.us.kg```"
         "**真心接口：    [备用](https://cnb.cool/fish2018/zx/-/git/raw/master/FongMi.json)**"
         "```http://www.fish2018.us.kg/z/FongMi.json```"
-        "**tgsou服务器：**"
+        "**tgsou服务器：    [备用](http://tgsou.fish2018.ip-ddns.com)**"
         "```http://tgsou.fish2018.us.kg```"
     )
     # 匹配关键字分发到不同频道/群组，不需要分发直接设置channel_match=[]即可
