@@ -3,6 +3,8 @@
 tgsearch、tgsou需要配置一堆频道群组，完全可以跑个定时任务监控这些频道群组，把网盘、磁力资源全都转发到自己的频道，这样只需要配置一个就可以  
 效果参考：https://t.me/s/tgsearchers  
 
+`TGNetDiskLinkChecker.py`脚本用于检测网盘链接有效性，并自动删除链接失效的消息，目前支持夸克、天翼、阿里云、115、123、百度
+
 ### 信息获取
 在线获取TG session(选择V1)： https://tg.uu8.pro/  
 
