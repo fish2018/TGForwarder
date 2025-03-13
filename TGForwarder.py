@@ -31,7 +31,7 @@ if os.environ.get("HTTP_PROXY"):
 class TGForwarder:
     def __init__(self, api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel,
                  limit, replies_limit, include, exclude, check_replies, proxy, checknum, replacements, message_md, channel_match, hyperlink_text, past_years, only_today, try_join):
-        self.urls_kw = ['magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', 'pan.quark.cn', '115cdn.com','115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com','pan.baidu.com','mypikpak.com','123684.com']
+        self.urls_kw = ['magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', 'pan.quark.cn', '115cdn.com','115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com','pan.baidu.com','mypikpak.com','123684.com','123685.com','123912.com','123pan.com','123pan.cn','123592.com']
         self.checkbox = {"links":[],"sizes":[],"bot_links":{},"chat_forward_count_msg_id":{},"today":"","today_count":0}
         self.checknum = checknum
         self.today_count = 0
@@ -65,10 +65,11 @@ class TGForwarder:
         self.check_replies = check_replies
         self.download_folder = 'downloads'
         self.try_join = try_join
-        if not proxy:
-            self.client = TelegramClient(StringSession(string_session), api_id, api_hash)
-        else:
-            self.client = TelegramClient(StringSession(string_session), api_id, api_hash, proxy=proxy)
+        self.client = TelegramClient(StringSession(string_session), api_id, api_hash, proxy=proxy)
+        # if not proxy:
+        #     self.client = TelegramClient(StringSession(string_session), api_id, api_hash)
+        # else:
+        #     self.client = TelegramClient(StringSession(string_session), api_id, api_hash, proxy=proxy)
     def random_wait(self, min_ms, max_ms):
         min_sec = min_ms / 1000
         max_sec = max_ms / 1000
@@ -224,7 +225,7 @@ class TGForwarder:
 
         chat_forward_count_msg_id = {}
         msg,tc = await self.daily_forwarded_count(self.forward_to_channel)
-        sent_message = await self.client.send_message(self.forward_to_channel, msg , parse_mode='md')
+        sent_message = await self.client.send_message(self.forward_to_channel, msg , parse_mode='md', link_preview=False)
         self.checkbox["today_count"] = tc
         # 置顶消息
         await self.client.pin_message(self.forward_to_channel, sent_message.id)
@@ -343,7 +344,7 @@ class TGForwarder:
             "aliyun": ["alipan.com", "aliyundrive.com"],  # 阿里云
             "pikpak": ["mypikpak.com"],
             "baidu": ["pan.baidu.com"],
-            "123": ["123684.com"],
+            "123": ['123684.com','123685.com','123912.com','123pan.com','123pan.cn','123592.com'],
             "others": []  # 其他
         }
         # 初始化结果字典
@@ -578,7 +579,10 @@ class TGForwarder:
                 chat_name = chat_name.split('|')[0]
             global total
             total = 0
-            links, sizes = await self.forward_messages(chat_name, limit, links, sizes)
+            try:
+                links, sizes = await self.forward_messages(chat_name, limit, links, sizes)
+            except Exception as e:
+                continue
         await self.send_daily_forwarded_count()
         with open(self.history, 'w+', encoding='utf-8') as f:
             self.checkbox['links'] = list(set(links))[-self.checkbox["today_count"]:]
@@ -665,13 +669,13 @@ class TGForwarder:
 
 
 if __name__ == '__main__':
-    channels_groups_monitor = ['https://t.me/+rBbwMtzfIes3NjBl','xx123pan','pan123_share','yunpanall','MCPH086','zaihuayun','Q66Share','NewAliPan','Oscar_4Kmovies','ucwpzy','ikiviyyp','alyp_TV','alyp_4K_Movies','guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan', 'hao115', 'yunpanshare','Aliyun_4K_Movies', 'dianyingshare', 'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx','ucpanpan', 'kuakeyun', 'ucquark']
+    channels_groups_monitor = ['yingshifenxiang123','pan123pan','zyzhpd123','xx123pan','pan123_share','zyfb123','https://t.me/+rBbwMtzfIes3NjBl','pankuake_share','jdjdn1111','yggpan','yunpanall','MCPH086','zaihuayun','Q66Share','NewAliPan','Oscar_4Kmovies','ucwpzy','alyp_TV','alyp_4K_Movies','guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan', 'hao115', 'yunpanshare','Aliyun_4K_Movies', 'dianyingshare', 'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx','ucpanpan', 'kuakeyun', 'ucquark']
     forward_to_channel = 'tgsearchers'
     # 监控最近消息数
     limit = 20
     # 监控消息中评论数，有些视频、资源链接被放到评论中
     replies_limit = 1
-    include = ['链接', '片名', '名称', '剧名', 'magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', '123684.com',
+    include = ['链接', '片名', '名称', '剧名', 'magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', '123684.com','123685.com','123912.com','123pan.com','123pan.cn','123592.com',
                'pan.quark.cn', '115cdn.com','115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com', '夸克云盘', '阿里云盘', '磁力链接']
     exclude = ['小程序', '预告', '预感', '盈利', '即可观看', '书籍', '电子书', '图书', '丛书', '期刊','app','软件', '破解版','解锁','专业版','高级版','最新版','食谱',
                '免安装', '免广告','安卓', 'Android', '课程', '作品', '教程', '教学', '全书', '名著', 'mobi', 'MOBI', 'epub','任天堂','PC','单机游戏',
@@ -694,11 +698,11 @@ if __name__ == '__main__':
     }
     # 替换消息中关键字(tag/频道/群组)
     replacements = {
-        forward_to_channel: ["yunpanall","NewAliPan","ucquark", "uckuake", "yunpanshare", "yunpangroup", "Quark_0",
+        forward_to_channel: ['yunpangroup','pan123pan','juziminmao',"yunpanall","NewAliPan","ucquark", "uckuake", "yunpanshare", "yunpangroup", "Quark_0",
                              "guaguale115", "Aliyundrive_Share_Channel", "alyd_g", "shareAliyun", "aliyundriveShare",
-                             "hao115", "Mbox115", "NewQuark", "Quark_Share_Group", "QuarkRobot", "memosfanfan_bot",
+                             "hao115", "Mbox115", "NewQuark", "Quark_Share_Group", "QuarkRobot", "memosfanfan_bot",'pankuake_share',
                              "Quark_Movies", "aliyun_share_bot", "AliYunPanBot","None","大风车","雷锋","热心网友","xx123pan","xx123pan1"],
-        "": ["🦜投稿", "• ", "🐝", "树洞频道", "云盘投稿", "广告合作", "✈️ 画境频道", "🌐 画境官网", "🎁 详情及下载", " - 影巢", "帮助咨询", "🌈 分享人: 自动发布","分享者：123盘社区","🌥云盘频道 - 📦",
+        "": ['🕸源站：https://tv.yydsys.top','via 特别大 爱新觉罗',"🦜投稿", "• ", "🐝", "树洞频道", "云盘投稿", "广告合作", "✈️ 画境频道", "🌐 画境官网", "🎁 详情及下载", " - 影巢", "帮助咨询", "🌈 分享人: 自动发布","分享者：123盘社区","🌥云盘频道 - 📦",
              "🌍： 群主自用机场: 守候网络, 9折活动!", "🔥： 阿里云盘播放神器: VidHub","🔥： 阿里云盘全能播放神器: VidHub","🔥： 移动云盘免流丝滑挂载播放: VidHub", "画境流媒体播放器-免费看奈飞，迪士尼！",
              "AIFUN 爱翻 BGP入口极速专线", "AIFUN 爱翻 机场", "from 天翼云盘日更频道","via 匿名","🖼️ 奥斯卡4K蓝光影视站","投稿: 点击投稿","────────────────","【1】需要迅雷云盘链接请进群，我会加入更新",
              "【2】求随手单点频道内容，点赞❤️👍等表情","【3】帮找❗️资源，好片源（别客气）","【4】目前共4个频道，分类内容发布↓","【5】更多请看简介［含™「莫愁片海•拾贝十倍」社群］与🐧/🌏正式群"," - 📌"]
@@ -706,15 +710,18 @@ if __name__ == '__main__':
     # 自定义统计置顶消息，markdown格式
     message_md = (
         "**Github：[https://github.com/fish2018](https://github.com/fish2018)**\n\n"
+        "**本频道实时更新最新影视资源(123、夸克、阿里云、天翼、UC、115、移动、磁力、百度、迅雷)，仅用于tgsearch/tgsou学习研究**\n\n"
         "**推荐播放器：   [影视](https://t.me/ys_tvb)**\n\n"
-        "**PG接口：    [备用1](https://cnb.cool/fish2018/pg/-/git/raw/master/jsm.json)   [备用2](http://www.fish2018.ip-ddns.com/p/jsm.json) **"
-        "```http://www.fish2018.us.kg/p/jsm.json```"
-        "**tgsearch服务器：    [备用](http://tg.fish2018.ip-ddns.com)**"
-        "```http://tg.fish2018.us.kg```"
-        "**真心接口：    [备用](https://cnb.cool/fish2018/zx/-/git/raw/master/FongMi.json)**"
-        "```http://www.fish2018.us.kg/z/FongMi.json```"
-        "**tgsou服务器：    [备用](http://tgsou.fish2018.ip-ddns.com)**"
-        "```http://tgsou.fish2018.us.kg```"
+        "**PG接口：    [备用1](https://cnb.cool/fish2018/pg/-/git/raw/master/jsm.json)   [备用2](http://www.fish2018.us.kg/p/jsm.json) **"
+        "```http://www.fish2018.ip-ddns.com/p/jsm.json```"
+        "**tgsearch服务器：    [备用](http://tg.fish2018.us.kg)**"
+        "```http://tg.fish2018.ip-ddns.com```"
+        "**真心接口：    [备用](https://cnb.cool/fish2018/zx/-/git/raw/master/FongMi.json)   [备用2](http://www.fish2018.us.kg/z/FongMi.json) **"
+        "```http://www.fish2018.ip-ddns.com/z/FongMi.json```"
+        "**tgsou服务器：    [备用](http://tgsou.fish2018.us.kg)**"
+        "```http://tgsou.fish2018.ip-ddns.com```"
+        "**随机壁纸接口(18x)：   [备用](http://www.fish2018.us.kg/imgs)**"
+        "```http://www.fish2018.ip-ddns.com/imgs```"
     )
     # 匹配关键字分发到不同频道/群组，不需要分发直接设置channel_match=[]即可
     # channel_match = [
@@ -725,7 +732,7 @@ if __name__ == '__main__':
     #     }
     # ]
     channel_match = []
-    # 尝试加入群组/频道
+    # 尝试加入公共群组频道，无法过验证
     try_join = False
     # 消息中不含关键词图文，但有些资源被放到消息评论中，如果需要监控评论中资源，需要开启，否则建议关闭
     check_replies = False
@@ -735,6 +742,7 @@ if __name__ == '__main__':
     string_session = 'xxx'
     # 默认不开启代理
     proxy = None
+    # proxy = (socks.SOCKS5, '127.0.0.1', 7897)
     # 首次检测自己频道最近checknum条消息去重，后续检测累加已转发的消息数，如果当日转发数超过checknum条，则检测当日转发总数
     checknum = 50
     # 允许转发今年之前的资源
