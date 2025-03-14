@@ -1,4 +1,5 @@
 anyio==4.6.2.post1
+beautifulsoup4-4.13.3
 certifi==2024.8.30
 exceptiongroup==1.2.2
 h11==0.14.0
