@@ -7,6 +7,7 @@ import httpx
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 from telethon.errors import RPCError
+from bs4 import BeautifulSoup
 
 # 配置日志
 logging.basicConfig(
@@ -53,7 +54,8 @@ class TelegramLinkManager:
             'pan.baidu.com', 'yun.baidu.com',
             'mypikpak.com',
             '123684.com', '123685.com', '123912.com', '123pan.com', '123pan.cn', '123592.com',
-            'cloud.189.cn'
+            'cloud.189.cn',
+            'drive.uc.cn'  # Added UC domain
         ]
         links = [url for url in urls if any(domain in url for domain in net_disk_domains)]
         return links
@@ -138,6 +140,10 @@ class TelegramLinkManager:
     def extract_share_id(self, url: str):
         """从链接中提取分享ID，支持多域名网盘"""
         net_disk_patterns = {
+            'uc': {
+                'domains': ['drive.uc.cn'],
+                'pattern': r"https?://drive\.uc\.cn/s/([a-zA-Z0-9]+)"
+            },
             'aliyun': {
                 'domains': ['aliyundrive.com', 'alipan.com'],
                 'pattern': r"https?://(?:www\.)?(?:aliyundrive|alipan)\.com/s/([a-zA-Z0-9]+)"
@@ -174,6 +180,43 @@ class TelegramLinkManager:
                     share_id = match.group(1)
                     return share_id, net_disk
         return None, None
+
+    # 检测UC网盘链接有效性
+    async def check_uc(self, share_id: str):
+        url = f"https://drive.uc.cn/s/{share_id}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.101 Mobile Safari/537.36",
+            "Host": "drive.uc.cn",
+            "Referer": url,
+            "Origin": "https://drive.uc.cn",
+        }
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, headers=headers, timeout=10)
+                if response.status_code != 200:
+                    return False
+
+                soup = BeautifulSoup(response.text, 'html.parser')
+                page_text = soup.get_text(strip=True)
+
+                # 检查错误提示
+                error_keywords = ["失效", "不存在", "违规", "删除", "已过期", "被取消"]
+                if any(keyword in page_text for keyword in error_keywords):
+                    return False
+
+                # 检查是否需要访问码（有效但需密码）
+                if soup.select_one(".main-body .input-wrap input"):
+                    logger.info(f"UC链接 {url} 需要密码")
+                    return True
+
+                # 检查是否包含文件列表或分享内容（有效）
+                if "文件" in page_text or "分享" in page_text or soup.select_one(".file-list"):
+                    return True
+
+                return False
+        except httpx.RequestError as e:
+            logger.error(f"UC检查错误 for {share_id}: {str(e)}")
+            return False
 
     # 检测阿里云盘链接有效性
     async def check_aliyun(self, share_id: str):
@@ -265,7 +308,7 @@ class TelegramLinkManager:
                 # 默认未知状态（可能是反爬或异常页面）
                 return False
         except httpx.RequestError as e:
-            print(f"Baidu check error for {share_id}: {str(e)}")
+            logger.error(f"检测百度网盘链接失败: {e}")
             return False
 
     # 检测天翼云盘链接有效性
@@ -293,6 +336,7 @@ class TelegramLinkManager:
             return True
 
         check_functions = {
+            "uc": self.check_uc,
             "aliyun": self.check_aliyun,
             "quark": self.check_quark,
             "115": self.check_115,
