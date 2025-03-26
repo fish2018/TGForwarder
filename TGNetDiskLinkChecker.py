@@ -9,43 +9,37 @@ from telethon.sessions import StringSession
 from telethon.errors import RPCError
 from bs4 import BeautifulSoup
 
-# 配置日志
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
-
-# 屏蔽 httpx 的 INFO 日志
-logging.getLogger("httpx").setLevel(logging.WARNING)
-
-# Telethon客户端配置
-API_ID = 6627460
-API_HASH = "27a53a0965e486a2bc1b1fcde473b1c4"
-STRING_SESSION = "xxx"
-JSON_PATH_NORMAL = os.path.join(os.getcwd(), "messages.json")
-JSON_PATH_123 = os.path.join(os.getcwd(), "messages_123.json")
-TARGET_CHANNEL = "tgsearchers"
-PROXY = None
-BATCH_SIZE = 500
-
-# 初始化Telethon客户端
-client = TelegramClient(StringSession(STRING_SESSION), API_ID, API_HASH, proxy=PROXY)
-
 
 class TelegramLinkManager:
-    def __init__(self, json_path_normal: str, json_path_123: str, target_channel: str):
-        self.client = client
-        self.json_path_normal = json_path_normal
-        self.json_path_123 = json_path_123
-        self.target_channel = target_channel
-        self.batch_size = BATCH_SIZE
+    def __init__(self, config):
+        # 配置日志
+        logging.basicConfig(
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            level=logging.INFO
+        )
+        self.logger = logging.getLogger(__name__)
+        
+        # 屏蔽 httpx 的 INFO 日志
+        logging.getLogger("httpx").setLevel(logging.WARNING)
+        
+        self.config = config
+        # 初始化Telethon客户端
+        self.client = TelegramClient(
+            StringSession(config["STRING_SESSION"]), 
+            config["API_ID"], 
+            config["API_HASH"], 
+            proxy=config["PROXY"]
+        )
+        self.json_path_normal = config["JSON_PATH_NORMAL"]
+        self.json_path_123 = config["JSON_PATH_123"]
+        self.target_channel = config["TARGET_CHANNEL"]
+        self.batch_size = config["BATCH_SIZE"]
 
     # 提取消息中的网盘链接
     def extract_links(self, message_text: str):
         """从消息文本中提取网盘链接"""
         if not message_text:
-            logger.debug("消息文本为空，跳过提取")
+            self.logger.debug("消息文本为空，跳过提取")
             return []
         url_pattern = r'https?://[^\s]+'
         urls = re.findall(url_pattern, message_text)
@@ -72,10 +66,10 @@ class TelegramLinkManager:
                     data["messages"] = []
                 if "last_processed_id" not in data:
                     data["last_processed_id"] = 0
-                logger.info(f"加载JSON数据: {json_path}, messages_count={len(data['messages'])}, last_processed_id={data['last_processed_id']}")
+                self.logger.info(f"加载JSON数据: {json_path}, messages_count={len(data['messages'])}, last_processed_id={data['last_processed_id']}")
                 return data
         except (FileNotFoundError, json.JSONDecodeError):
-            logger.info(f"JSON文件未找到，创建新文件: {json_path}")
+            self.logger.info(f"JSON文件未找到，创建新文件: {json_path}")
             data = {"messages": [], "last_processed_id": 0}
             await self.save_json_data(data, json_path)
             return data
@@ -86,9 +80,9 @@ class TelegramLinkManager:
         try:
             with open(json_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
-            logger.info(f"JSON文件保存成功: {json_path}, messages_count={len(data['messages'])}, last_processed_id={data['last_processed_id']}")
+            self.logger.info(f"JSON文件保存成功: {json_path}, messages_count={len(data['messages'])}, last_processed_id={data['last_processed_id']}")
         except Exception as e:
-            logger.error(f"保存JSON失败: {e}, 路径: {json_path}")
+            self.logger.error(f"保存JSON失败: {e}, 路径: {json_path}")
 
     # 获取并保存所有新消息（分批处理）
     async def fetch_and_save_all_messages(self, limit=None):
@@ -140,16 +134,16 @@ class TelegramLinkManager:
                     data_123["last_processed_id"] = offset_id
                     await self.save_json_data(data_normal, self.json_path_normal)
                     await self.save_json_data(data_123, self.json_path_123)
-                    logger.info(f"本批次保存了 {len(new_messages_normal) + len(new_messages_123)} 条消息，总计 {total_new_messages} 条")
+                    self.logger.info(f"本批次保存了 {len(new_messages_normal) + len(new_messages_123)} 条消息，总计 {total_new_messages} 条")
 
                 if messages_fetched == 0 or (limit and total_new_messages >= limit):
                     break
 
             except Exception as e:
-                logger.error(f"获取消息失败: {e}")
+                self.logger.error(f"获取消息失败: {e}")
                 break
 
-        logger.info(f"所有新消息保存完成，总计 {total_new_messages} 条")
+        self.logger.info(f"所有新消息保存完成，总计 {total_new_messages} 条")
 
     # 提取分享ID
     def extract_share_id(self, url: str):
@@ -189,15 +183,15 @@ class TelegramLinkManager:
                     return True
                 return False
         except httpx.TimeoutException as e:
-            logger.error(f"UC网盘链接 {url} 检测超时: {str(e)}")
+            self.logger.error(f"UC网盘链接 {url} 检测超时: {str(e)}")
             return False
         except httpx.HTTPStatusError as e:
-            logger.error(f"UC网盘链接 {url} HTTP错误: {e.response.status_code}")
+            self.logger.error(f"UC网盘链接 {url} HTTP错误: {e.response.status_code}")
             return False
         except Exception as e:
             if 'ConnectError' in str(e):
                 return True
-            logger.error(f"UC网盘链接 {url} 检测失败: {type(e).__name__}: {str(e)}")
+            self.logger.error(f"UC网盘链接 {url} 检测失败: {type(e).__name__}: {str(e)}")
             return False
 
     async def check_aliyun(self, share_id: str):
@@ -210,7 +204,7 @@ class TelegramLinkManager:
                 response_json = response.json()
                 return bool(response_json.get('has_pwd') or response_json.get('file_infos'))
         except httpx.RequestError as e:
-            logger.error(f"检测阿里云盘链接失败: {e}")
+            self.logger.error(f"检测阿里云盘链接失败: {e}")
             return False
 
     async def check_115(self, share_id: str):
@@ -222,7 +216,7 @@ class TelegramLinkManager:
                 response_json = response.json()
                 return bool(response_json.get('state') or '请输入访问码' in response_json.get('error', ''))
         except httpx.RequestError as e:
-            logger.error(f"检测115网盘链接失败: {e}")
+            self.logger.error(f"检测115网盘链接失败: {e}")
             return False
 
     async def check_quark(self, share_id: str):
@@ -235,7 +229,7 @@ class TelegramLinkManager:
                 response_json = response.json()
                 return response_json.get('message') == "ok" or response_json.get('message') == "需要提取码"
         except httpx.RequestError as e:
-            logger.error(f"检测夸克网盘链接失败: {e}")
+            self.logger.error(f"检测夸克网盘链接失败: {e}")
             return False
 
     async def check_123(self, share_id: str):
@@ -249,7 +243,7 @@ class TelegramLinkManager:
                 response_json = response.json()
                 return bool(response_json.get('data', {}).get('HasPwd', False) or response_json.get('code') == 0)
         except (httpx.RequestError, json.JSONDecodeError) as e:
-            logger.error(f"检测123网盘链接失败: {e}")
+            self.logger.error(f"检测123网盘链接失败: {e}")
             return False
 
     async def check_baidu(self, share_id: str):
@@ -263,7 +257,7 @@ class TelegramLinkManager:
                     return False
                 return bool("请输入提取码" in text or "提取文件" in text or "过期时间" in text)
         except httpx.RequestError as e:
-            logger.error(f"检测百度网盘链接失败: {e}")
+            self.logger.error(f"检测百度网盘链接失败: {e}")
             return False
 
     async def check_tianyi(self, share_id: str):
@@ -278,24 +272,24 @@ class TelegramLinkManager:
                     return False
                 return True
         except httpx.TimeoutException as e:
-            logger.error(f"天翼云盘链接 {share_id} 检测超时: {str(e)}")
+            self.logger.error(f"天翼云盘链接 {share_id} 检测超时: {str(e)}")
             return False
         except httpx.HTTPStatusError as e:
-            logger.error(f"天翼云盘链接 {share_id} HTTP错误: {e.response.status_code}")
+            self.logger.error(f"天翼云盘链接 {share_id} HTTP错误: {e.response.status_code}")
             return False
         except Exception as e:
             if 'ConnectError' in str(e):
                 return True
-            logger.error(f"天翼云盘链接 {share_id} 检测失败: {type(e).__name__}: {str(e)}")
+            self.logger.error(f"天翼云盘链接 {share_id} 检测失败: {type(e).__name__}: {str(e)}")
             return False
 
     # 检查单个链接有效性
     async def check_url(self, url: str, semaphore: asyncio.Semaphore):
         async with semaphore:
-            # logger.info(f"开始检测链接: {url}")
+            # self.logger.info(f"开始检测链接: {url}")
             share_id, service = self.extract_share_id(url)
             if not share_id or not service:
-                logger.warning(f"无法识别链接: {url}")
+                self.logger.warning(f"无法识别链接: {url}")
                 return True
             check_functions = {
                 "uc": self.check_uc, "aliyun": self.check_aliyun, "quark": self.check_quark,
@@ -304,7 +298,7 @@ class TelegramLinkManager:
             }
             result = await check_functions.get(service, lambda x: True)(share_id)
             if not result:
-                logger.info(f"链接 {url} 检测完成，结果: {result}")
+                self.logger.info(f"链接 {url} 检测完成，结果: {result}")
             return result
 
     # 处理消息（批量检测）
@@ -325,7 +319,7 @@ class TelegramLinkManager:
                         all_urls_normal.append(url)
                     url_to_message[url] = message
 
-            logger.info(f"总共有 {len(all_urls_123)} 条123网盘链接和 {len(all_urls_normal)} 条其他网盘链接需要检测")
+            self.logger.info(f"总共有 {len(all_urls_123)} 条123网盘链接和 {len(all_urls_normal)} 条其他网盘链接需要检测")
 
             semaphore_123 = asyncio.Semaphore(min(10, concurrency))
             semaphore_normal = asyncio.Semaphore(concurrency)
@@ -346,7 +340,7 @@ class TelegramLinkManager:
                             if url not in url_to_message[url]["invalid_urls"]:  # 避免重复添加
                                 url_to_message[url]["invalid_urls"].append(url)
                 except asyncio.TimeoutError:
-                    logger.error(f"123网盘链接检测超时，总链接数: {len(all_urls_123)}")
+                    self.logger.error(f"123网盘链接检测超时，总链接数: {len(all_urls_123)}")
                     for url in all_urls_123:
                         if url not in url_to_message[url]["invalid_urls"]:
                             url_to_message[url]["invalid_urls"].append(url)
@@ -364,33 +358,57 @@ class TelegramLinkManager:
                             if url not in url_to_message[url]["invalid_urls"]:  # 避免重复添加
                                 url_to_message[url]["invalid_urls"].append(url)
                 except asyncio.TimeoutError:
-                    logger.error(f"其他网盘链接检测超时，总链接数: {len(all_urls_normal)}")
+                    self.logger.error(f"其他网盘链接检测超时，总链接数: {len(all_urls_normal)}")
                     for url in all_urls_normal:
                         if url not in url_to_message[url]["invalid_urls"]:
                             url_to_message[url]["invalid_urls"].append(url)
 
         if delete == 1:
-            for data in [data_normal, data_123]:
+            for data in [data_normal]:  # 只处理普通网盘
                 messages = data["messages"]
                 for message in messages[:]:
                     if message["invalid_urls"]:
                         try:
                             await self.client.delete_messages(self.target_channel, message["message_id"])
-                            logger.info(f"删除失效消息: {message['message_id']}")
+                            self.logger.info(f"删除失效消息: {message['message_id']}")
                             messages.remove(message)
                         except RPCError as e:
-                            logger.error(f"删除消息失败: {e}")
+                            self.logger.error(f"删除消息失败: {e}")
+            
+            # 对于123网盘消息，只有在所有链接都失效时才删除
+            self.logger.warning("注意：123网盘检测较为严格，可能会有误判，请谨慎删除")
+            messages_123 = data_123["messages"]
+            for message in messages_123[:]:
+                if message.get("invalid_urls") and len(message.get("invalid_urls", [])) == len(message.get("urls", [])):
+                    try:
+                        await self.client.delete_messages(self.target_channel, message["message_id"])
+                        self.logger.info(f"删除123网盘失效消息: {message['message_id']}")
+                        messages_123.remove(message)
+                    except RPCError as e:
+                        self.logger.error(f"删除123网盘消息失败: {e}")
         elif delete == 3:
-            for data in [data_normal, data_123]:
-                messages = data["messages"]
-                for message in messages[:]:
-                    if message.get("invalid_urls"):
-                        try:
-                            await self.client.delete_messages(self.target_channel, message["message_id"])
-                            logger.info(f"删除失效消息: {message['message_id']}")
-                            messages.remove(message)
-                        except RPCError as e:
-                            logger.error(f"删除消息失败: {e}")
+            # 处理普通网盘
+            messages = data_normal["messages"]
+            for message in messages[:]:
+                if message.get("invalid_urls"):
+                    try:
+                        await self.client.delete_messages(self.target_channel, message["message_id"])
+                        self.logger.info(f"删除失效消息: {message['message_id']}")
+                        messages.remove(message)
+                    except RPCError as e:
+                        self.logger.error(f"删除消息失败: {e}")
+            
+            # 处理123网盘，只有所有链接都失效时才删除
+            self.logger.warning("注意：123网盘检测较为严格，可能会有误判，请谨慎删除")
+            messages_123 = data_123["messages"]
+            for message in messages_123[:]:
+                if message.get("invalid_urls") and len(message.get("invalid_urls", [])) == len(message.get("urls", [])):
+                    try:
+                        await self.client.delete_messages(self.target_channel, message["message_id"])
+                        self.logger.info(f"删除123网盘失效消息: {message['message_id']}")
+                        messages_123.remove(message)
+                    except RPCError as e:
+                        self.logger.error(f"删除123网盘消息失败: {e}")
 
         await self.save_json_data(data_normal, self.json_path_normal)
         await self.save_json_data(data_123, self.json_path_123)
@@ -414,7 +432,7 @@ class TelegramLinkManager:
                     invalid_urls_normal.append(url)
                 url_to_message[url] = message
 
-        logger.info(f"总共有 {len(invalid_urls_123)} 条123网盘失效链接和 {len(invalid_urls_normal)} 条其他网盘失效链接需要重新检测")
+        self.logger.info(f"总共有 {len(invalid_urls_123)} 条123网盘失效链接和 {len(invalid_urls_normal)} 条其他网盘失效链接需要重新检测")
 
         semaphore_123 = asyncio.Semaphore(min(10, concurrency))
         semaphore_normal = asyncio.Semaphore(concurrency)
@@ -434,9 +452,9 @@ class TelegramLinkManager:
                     if result and not isinstance(result, Exception):
                         # 如果重新检测有效，从invalid_urls中移除
                         url_to_message[url]["invalid_urls"] = [u for u in url_to_message[url]["invalid_urls"] if u != url]
-                        logger.info(f"链接 {url} 重新检测有效，已从失效列表移除")
+                        self.logger.info(f"链接 {url} 重新检测有效，已从失效列表移除")
             except asyncio.TimeoutError:
-                logger.error(f"123网盘失效链接重新检测超时，总链接数: {len(invalid_urls_123)}")
+                self.logger.error(f"123网盘失效链接重新检测超时，总链接数: {len(invalid_urls_123)}")
 
         # 重新检测其他网盘链接
         if invalid_urls_normal:
@@ -450,9 +468,9 @@ class TelegramLinkManager:
                     if result and not isinstance(result, Exception):
                         # 如果重新检测有效，从invalid_urls中移除
                         url_to_message[url]["invalid_urls"] = [u for u in url_to_message[url]["invalid_urls"] if u != url]
-                        logger.info(f"链接 {url} 重新检测有效，已从失效列表移除")
+                        self.logger.info(f"链接 {url} 重新检测有效，已从失效列表移除")
             except asyncio.TimeoutError:
-                logger.error(f"其他网盘失效链接重新检测超时，总链接数: {len(invalid_urls_normal)}")
+                self.logger.error(f"其他网盘失效链接重新检测超时，总链接数: {len(invalid_urls_normal)}")
 
         await self.save_json_data(data_normal, self.json_path_normal)
         await self.save_json_data(data_123, self.json_path_123)
@@ -461,13 +479,51 @@ class TelegramLinkManager:
     async def run_async(self, delete, limit=None, concurrency=500, recheck=False):
         if delete in [1, 2]:
             await self.fetch_and_save_all_messages(limit)
-            await self.process_messages(delete, concurrency)
+            await self.process_messages(delete=2, concurrency=concurrency)  # 始终先以检测模式运行
             if recheck:  # 如果指定重新检测
                 await self.recheck_invalid_urls(concurrency)
+            
+            # 在重新检测后，如果原始模式是删除模式，则执行删除操作
+            if delete == 1:
+                # 专门处理删除操作
+                data_normal = await self.load_json_data(self.json_path_normal)
+                data_123 = await self.load_json_data(self.json_path_123)
+                
+                # 先处理普通网盘消息
+                messages = data_normal["messages"]
+                for message in messages[:]:
+                    if message.get("invalid_urls"):
+                        try:
+                            await self.client.delete_messages(self.target_channel, message["message_id"])
+                            self.logger.info(f"删除失效消息: {message['message_id']}")
+                            messages.remove(message)
+                        except RPCError as e:
+                            self.logger.error(f"删除消息失败: {e}")
+                
+                # 对于123网盘消息，考虑到其特殊性，只有在确认消息中所有链接都失效时才删除
+                self.logger.warning("注意：123网盘检测较为严格，可能会有误判，请谨慎删除")
+                messages_123 = data_123["messages"]
+                for message in messages_123[:]:
+                    if message.get("invalid_urls") and len(message.get("invalid_urls", [])) == len(message.get("urls", [])):
+                        try:
+                            await self.client.delete_messages(self.target_channel, message["message_id"])
+                            self.logger.info(f"删除123网盘失效消息: {message['message_id']}")
+                            messages_123.remove(message)
+                        except RPCError as e:
+                            self.logger.error(f"删除123网盘消息失败: {e}")
+                
+                await self.save_json_data(data_normal, self.json_path_normal)
+                await self.save_json_data(data_123, self.json_path_123)
         else:
             await self.process_messages(delete, concurrency)
 
-    def run(self, delete, limit=None, concurrency=500, recheck=False):
+    def run(self, delete=None, limit=None, concurrency=None, recheck=None):
+        # 如果没有指定参数，则使用配置中的默认值
+        delete = delete if delete is not None else self.config["DELETE_MODE"]
+        limit = limit if limit is not None else self.config["LIMIT"]
+        concurrency = concurrency if concurrency is not None else self.config["CONCURRENCY"]
+        recheck = recheck if recheck is not None else self.config["RECHECK"]
+        
         with self.client.start():
             loop = asyncio.get_event_loop()
             loop.run_until_complete(self.run_async(delete, limit, concurrency, recheck))
@@ -475,10 +531,29 @@ class TelegramLinkManager:
 
 # 示例使用
 if __name__ == "__main__":
+    logger = logging.getLogger(__name__)
     logger.info(f"当前工作目录: {os.getcwd()}")
-    manager = TelegramLinkManager(JSON_PATH_NORMAL, JSON_PATH_123, TARGET_CHANNEL)
-    delete_mode = 1  # 1: 检测并删除, 2: 仅检测, 3: 删除标记为失效的消息
-    limit = 500
-    concurrency = 20
-    recheck = True  # 设置为True以启用重新检测
-    manager.run(delete=delete_mode, limit=limit, concurrency=concurrency, recheck=recheck)
+    
+    # 配置项
+    CONFIG = {
+        # Telethon客户端配置
+        "API_ID": 6627460,
+        "API_HASH": "27a53a0965e486a2bc1b1fcde473b1c4",
+        "STRING_SESSION": "xxx",
+        "JSON_PATH_NORMAL": os.path.join(os.getcwd(), "messages.json"),
+        "JSON_PATH_123": os.path.join(os.getcwd(), "messages_123.json"),
+        "TARGET_CHANNEL": "tgsearchers",
+        "PROXY": None, # 
+        "BATCH_SIZE": 500,
+        # 运行配置
+        "DELETE_MODE": 1,  # 1: 检测并删除 (重新检测后再删除), 2: 仅检测, 3: 删除标记为失效的消息
+        "LIMIT": 1000,     # 每次检测的最大消息数量
+        "CONCURRENCY": 20, # 并发数
+        "RECHECK": True    # 是否重新检测标记为失效的链接
+    }
+    
+    # 创建管理器实例
+    manager = TelegramLinkManager(CONFIG)
+    
+    # 运行主程序 - 使用配置中的默认设置
+    manager.run()
