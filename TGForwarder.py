@@ -299,7 +299,7 @@ class TGForwarder:
                         continue
                     else:
                         url = urllib.parse.unquote(entity.url)
-                        matches = re.findall(self.pattern, url)
+                        matches = re.findall(self.pattern, url, re.VERBOSE)
                         if matches:
                             links+=matches
             return links
@@ -443,7 +443,7 @@ class TGForwarder:
             async for message in messages:
                 if message.message:
                     # 提取消息中的链接
-                    links_in_message = re.findall(self.pattern, message.message)
+                    links_in_message = re.findall(self.pattern, message.message, re.VERBOSE)
                     if not links_in_message:
                         continue  # 如果消息中没有链接，跳过
                     link = links_in_message[0]
@@ -484,7 +484,7 @@ class TGForwarder:
                 sizes.append(message.document.size)
             # 匹配出链接
             if message.message:
-                matches = re.findall(self.pattern, message.message)
+                matches = re.findall(self.pattern, message.message, re.VERBOSE)
                 if matches:
                     links.append(matches[0])
         links = list(set(links))
@@ -567,7 +567,7 @@ class TGForwarder:
                     # 图文(匹配关键词)
                     elif self.contains(message.message, self.include) and message.message and self.nocontains(message.message, self.exclude):
                         jumpLinks = await self.redirect_url(message)
-                        matches = re.findall(self.pattern, message.message) if self.contains(message.message, self.urls_kw) else []
+                        matches = re.findall(self.pattern, message.message, re.VERBOSE) if self.contains(message.message, self.urls_kw) else []
                         if matches or jumpLinks:
                             link = jumpLinks[0] if jumpLinks else matches[0]
                             if link not in links:
@@ -593,7 +593,7 @@ class TGForwarder:
                                     print(f'视频已经存在，size: {size}')
                             # 评论中链接关键词
                             elif self.contains(r.message, self.include) and r.message and self.nocontains(r.message, self.exclude):
-                                matches = re.findall(self.pattern, r.message)
+                                matches = re.findall(self.pattern, r.message, re.VERBOSE)
                                 if matches:
                                     link = matches[0]
                                     if link not in links:
@@ -606,7 +606,7 @@ class TGForwarder:
                 elif message.message:
                     if self.contains(message.message, self.include) and self.nocontains(message.message, self.exclude):
                         jumpLinks = await self.redirect_url(message)
-                        matches = re.findall(self.pattern, message.message) if self.contains(message.message, self.urls_kw) else []
+                        matches = re.findall(self.pattern, message.message, re.VERBOSE) if self.contains(message.message, self.urls_kw) else []
                         if matches or jumpLinks:
                             link = jumpLinks[0] if jumpLinks else matches[0]
                             if link not in links:
