@@ -1,5 +1,6 @@
 import os
 import socks
+import requests
 import random
 import time
 import json
@@ -31,13 +32,34 @@ if os.environ.get("HTTP_PROXY"):
 class TGForwarder:
     def __init__(self, api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel,
                  limit, replies_limit, include, exclude, check_replies, proxy, checknum, replacements, message_md, channel_match, hyperlink_text, past_years, only_today, try_join):
-        self.urls_kw = ['magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', 'pan.quark.cn', '115cdn.com','115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com','pan.baidu.com','mypikpak.com','123684.com','123685.com','123912.com','123pan.com','123pan.cn','123592.com']
+        self.urls_kw = ['ed2k','magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', 'pan.quark.cn', '115cdn.com','115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com','pan.baidu.com','mypikpak.com','123684.com','123685.com','123912.com','123pan.com','123pan.cn','123592.com']
         self.checkbox = {"links":[],"sizes":[],"bot_links":{},"chat_forward_count_msg_id":{},"today":"","today_count":0}
         self.checknum = checknum
         self.today_count = 0
         self.history = 'history.json'
         # 正则表达式匹配资源链接
-        self.pattern = r"(?:链接：\s*)?((?!https?://t\.me)(?:https?://[^\s'】\n]+|magnet:\?xt=urn:btih:[a-zA-Z0-9]+))"
+        # self.pattern = r"(?:链接：\s*)?((?!https?://t\.me)(?:https?://[^\s'】\n]+|magnet:\?xt=urn:btih:[a-zA-Z0-9]+))"
+        self.pattern = r'''
+            (?:链接：\s*)?                       # 可选的"链接："前缀
+            (?!https?://t\.me)                  # 排除电报链接
+            (?!https?://image\.tmdb\.org)       # 排除TMDB图片链接
+            (
+              # 磁力链接
+              magnet:\?xt=urn:btih:[a-zA-Z0-9]+|
+            
+              # ed2k链接 - 修复没有结尾斜杠的情况
+              ed2k://\|file\|[^|]+\|\d+\|[A-Fa-f0-9]+\|/?|
+            
+              # 所有网盘共享链接 - 通用格式
+              https?://(?:[\w.-]+\.)+[\w]+       # 任何域名
+              (?:
+                /(?:s|share|m/i|t|web/share)    # 常见路径模式
+                (?:/[\w.-]+)*                    # 可能的路径部分
+                (?:\?(?:[\w]+=[\w:]+&?)*)?       # 可能的查询参数，允许冒号作为值的一部分
+                [^\s'"<>()]+                     # 捕获剩余部分但排除一些常见终止符
+              )
+            )
+            '''
         self.api_id = api_id
         self.api_hash = api_hash
         self.string_session = string_session
@@ -122,23 +144,30 @@ class TGForwarder:
             for category, keywords in hyperlink_text.items():
                 # 获取该分类的第一个 URL（如果有）
                 if categorized_urls.get(category):
-                    url = categorized_urls[category][0]  # 使用第一个 URL
+                    slinks = categorized_urls[category]
+                    url = "\n".join(slinks)
+                    url += '\n@@'
+                    # 遍历关键词并替换
+                    for keyword in keywords:
+                        if keyword in text:
+                            text = text.replace(keyword, url)
+                            break
                 else:
                     continue  # 如果没有 URL，跳过
-                # 遍历关键词并替换
-                for keyword in keywords:
-                    if keyword in text:
-                        text = text.replace(keyword, url)
+        text = text.replace('@@','')
         if self.nocontains(text, self.urls_kw):
             return
-        if message.media and isinstance(message.media, MessageMediaPhoto):
-            await self.client.send_message(
-                target_chat_name,
-                self.replace_targets(text),  # 复制消息文本
-                file=message.media  # 复制消息的媒体文件
-            )
-        else:
-            await self.client.send_message(target_chat_name, self.replace_targets(text))
+        try:
+            if message.media and isinstance(message.media, MessageMediaPhoto):
+                await self.client.send_message(
+                    target_chat_name,
+                    self.replace_targets(text),  # 复制消息文本
+                    file=message.media  # 复制消息的媒体文件
+                )
+            else:
+                await self.client.send_message(target_chat_name, self.replace_targets(text))
+        except Exception as e:
+            print(f'发送消息失败: {e}')
     async def get_peer(self,client, channel_name):
         peer = None
         try:
@@ -241,6 +270,16 @@ class TGForwarder:
                 await self.client.pin_message(rule['target'], sm.id)
                 await self.client.delete_messages(rule['target'], [sm.id+1])
         self.checkbox["chat_forward_count_msg_id"] = chat_forward_count_msg_id
+    async def extract_links(self, text):
+        """从文本中提取各种共享链接"""
+        # 使用re.VERBOSE标志允许在正则表达式中使用注释和空白
+        matches = re.findall(self.pattern, text, re.VERBOSE)
+        # 去除重复项
+        unique_matches = []
+        for match in matches:
+            if match not in unique_matches:
+                unique_matches.append(match)
+        return unique_matches
     async def redirect_url(self, message):
         links = []
         if message.entities:
@@ -250,6 +289,12 @@ class TGForwarder:
                         url = await self.tgbot(entity.url)
                         if url:
                             links.append(url)
+                    elif 'https://telegra.ph/' in entity.url:
+                        res = requests.get(entity.url)
+                        html = res.content.decode('utf-8')
+                        matches = await self.extract_links(html)
+                        if matches:
+                            links+=matches
                     elif self.nocontains(entity.url, self.urls_kw):
                         continue
                     else:
@@ -336,6 +381,7 @@ class TGForwarder:
         # 定义分类规则
         categories = {
             "magnet": ["magnet"],  # 磁力链接
+            "ed2k": ["ed2k"], # ed2k
             "uc": ["drive.uc.cn"],  # UC
             "mobile": ["caiyun.139.com"],  # 移动
             "tianyi": ["cloud.189.cn"],  # 天翼
@@ -351,9 +397,13 @@ class TGForwarder:
         result = {category: [] for category in categories}
         # 遍历 URL 列表
         for url in urls:
-            # 单独处理磁力链接
+            # 处理磁力链接
             if url.startswith("magnet:"):
                 result["magnet"].append(url)
+                continue
+            # ed2k
+            elif url.startswith("ed2k:"):
+                result["ed2k"].append(url)
                 continue
             # 解析 URL
             parsed_url = urllib.parse.urlparse(url)
@@ -669,16 +719,16 @@ class TGForwarder:
 
 
 if __name__ == '__main__':
-    channels_groups_monitor = ['https://t.me/+rBbwMtzfIes3NjBl','pankuake_share','xlshare','jdjdn1111','yggpan','yunpanall','MCPH086','zaihuayun','Q66Share',
+    channels_groups_monitor = ['ysxb48','https://t.me/+rBbwMtzfIes3NjBl','pankuake_share','jdjdn1111','yggpan','yunpanall','MCPH086','zaihuayun','Q66Share',
                                'NewAliPan','Oscar_4Kmovies','ucwpzy','alyp_TV','alyp_4K_Movies','guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan',
                                'hao115', 'yunpanshare','Aliyun_4K_Movies', 'dianyingshare', 'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx',
-                               'ucpanpan', 'kuakeyun', 'ucquark','xx123pan','yingshifenxiang123','zyfb123','pan123pan','tyypzhpd','tianyirigeng']
+                               'ucpanpan', 'kuakeyun', 'ucquark','djku123','xx123pan','yingshifenxiang123','zyfb123','pan123pan','tyypzhpd','tianyirigeng']
     forward_to_channel = 'tgsearchers'
     # 监控最近消息数
     limit = 20
     # 监控消息中评论数，有些视频、资源链接被放到评论中
     replies_limit = 1
-    include = ['链接', '片名', '名称', '剧名', 'magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', '123684.com','123685.com','123912.com','123pan.com','123pan.cn','123592.com',
+    include = ['链接', '片名', '名称', '剧名', 'ed2k','magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', '123684.com','123685.com','123912.com','123pan.com','123pan.cn','123592.com',
                'pan.quark.cn', '115cdn.com','115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com', '夸克云盘', '阿里云盘', '磁力链接']
     exclude = ['小程序', '预告', '预感', '盈利', '即可观看', '书籍', '电子书', '图书', '丛书', '期刊','app','软件', '破解版','解锁','专业版','高级版','最新版','食谱',
                '免安装', '免广告','安卓', 'Android', '课程', '作品', '教程', '教学', '全书', '名著', 'mobi', 'MOBI', 'epub','任天堂','PC','单机游戏',
@@ -687,21 +737,22 @@ if __name__ == '__main__':
                '写真','抖音', '资料', '华为', '短剧', '纪录片', '记录片', '纪录', '纪实', '学习', '付费', '小学', '初中','数学', '语文']
     # 消息中的超链接文字，如果存在超链接，会用url替换文字
     hyperlink_text = {
-        "magnet": ["点击查看"],
-        "uc": ["点击查看"],
-        "mobile": ["点击查看"],
-        "tianyi": ["点击查看"],
-        "quark": ["【夸克网盘】点击获取","夸克云盘","点击查看"],
-        "115": ["115云盘","点击查看"],
-        "aliyun": ["【阿里云盘】点击获取","阿里云盘","点击查看"],
-        "pikpak": ["PikPak云盘","点击查看"],
-        "baidu": ["【百度网盘】点击获取","百度云盘","点击查看"],
-        "123": ["点击查看"],
-        "others": ["点击查看"],
+        "magnet": ["点击查看","@@"],
+        "ed2k": ["点击查看","@@"],
+        "uc": ["点击查看","@@"],
+        "mobile": ["点击查看","@@"],
+        "tianyi": ["点击查看","@@"],
+        "quark": ["【夸克网盘】点击获取","夸克云盘","点击查看","@@"],
+        "115": ["115云盘","点击查看","@@"],
+        "aliyun": ["【阿里云盘】点击获取","阿里云盘","点击查看","@@"],
+        "pikpak": ["PikPak云盘","点击查看","@@"],
+        "baidu": ["【百度网盘】点击获取","百度云盘","点击查看","@@"],
+        "123": ["点击查看","@@"],
+        "others": ["点击查看","@@"],
     }
     # 替换消息中关键字(tag/频道/群组)
     replacements = {
-        forward_to_channel: ['yunpangroup','pan123pan','juziminmao',"yunpanall","NewAliPan","ucquark", "uckuake", "yunpanshare", "yunpangroup", "Quark_0",
+        forward_to_channel: ['xlshare','yunpangroup','pan123pan','juziminmao',"yunpanall","NewAliPan","ucquark", "uckuake", "yunpanshare", "yunpangroup", "Quark_0",
                              "guaguale115", "Aliyundrive_Share_Channel", "alyd_g", "shareAliyun", "aliyundriveShare",
                              "hao115", "Mbox115", "NewQuark", "Quark_Share_Group", "QuarkRobot", "memosfanfan_bot",'pankuake_share',
                              "Quark_Movies", "aliyun_share_bot", "AliYunPanBot","None","大风车","雷锋","热心网友","xx123pan","xx123pan1"],
@@ -713,12 +764,12 @@ if __name__ == '__main__':
     # 自定义统计置顶消息，markdown格式
     message_md = (
         "**Github：[https://github.com/fish2018](https://github.com/fish2018)**\n\n"
-        "**本频道实时更新最新影视资源(123、夸克、阿里云、天翼、UC、115、移动、磁力、百度、迅雷)**\n\n"
-        "**PG接口：    [备用](https://cnb.cool/fish2018/pg/-/git/raw/master/jsm.json)   [备用2](http://www2.fish2018.ip-ddns.com/p/jsm.json)   [备用3](http://www3.fish2018.ip-ddns.com/p/jsm.json) **"
+        "**本频道实时更新最新影视资源并自动清理失效链接(123、夸克、阿里云、天翼、UC、115、移动、磁力、百度、迅雷)**\n\n"
+        "**[PG](https://t.me/pandagroovechat)接口：    [备用](https://cnb.cool/fish2018/pg/-/git/raw/master/jsm.json)   [备用2](http://www2.fish2018.ip-ddns.com/p/jsm.json)   [备用3](http://www3.fish2018.ip-ddns.com/p/jsm.json) **"
         "```http://www.fish2018.ip-ddns.com/p/jsm.json```"
         "**tgsearch服务器：    [备用](http://tg2.fish2018.ip-ddns.com)    [备用2](http://tg3.fish2018.ip-ddns.com)**"
         "```http://tg.fish2018.ip-ddns.com```"
-        "**真心接口：    [备用](https://cnb.cool/fish2018/zx/-/git/raw/master/FongMi.json)   [备用2](http://www2.fish2018.ip-ddns.com/z/FongMi.json)   [备用3](http://www3.fish2018.ip-ddns.com/z/FongMi.json) **"
+        "**[真心](https://t.me/juejijianghuchat)接口：    [备用](https://cnb.cool/fish2018/zx/-/git/raw/master/FongMi.json)   [备用2](http://www2.fish2018.ip-ddns.com/z/FongMi.json)   [备用3](http://www3.fish2018.ip-ddns.com/z/FongMi.json) **"
         "```http://www.fish2018.ip-ddns.com/z/FongMi.json```"
         "**tgsou服务器：    [备用](http://tgsou2.fish2018.ip-ddns.com)    [备用2](http://tgsou3.fish2018.ip-ddns.com)**"
         "```http://tgsou.fish2018.ip-ddns.com```"
