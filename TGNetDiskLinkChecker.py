@@ -34,6 +34,7 @@ class TelegramLinkManager:
         self.json_path_123 = config["JSON_PATH_123"]
         self.target_channel = config["TARGET_CHANNEL"]
         self.batch_size = config["BATCH_SIZE"]
+        self.net_disk_domains = config["NET_DISK_DOMAINS"]
 
     # 提取消息中的网盘链接
     def extract_links(self, message_text: str):
@@ -43,7 +44,7 @@ class TelegramLinkManager:
             return []
         url_pattern = r'https?://[^\s]+'
         urls = re.findall(url_pattern, message_text)
-        net_disk_domains = [
+        net_disk_domains = self.net_disk_domains if self.net_disk_domains else [
             'aliyundrive.com', 'alipan.com',
             'pan.quark.cn',
             '115.com', '115cdn.com', 'anxia.com',
@@ -184,7 +185,7 @@ class TelegramLinkManager:
                 return False
         except httpx.TimeoutException as e:
             self.logger.error(f"UC网盘链接 {url} 检测超时: {str(e)}")
-            return False
+            return True
         except httpx.HTTPStatusError as e:
             self.logger.error(f"UC网盘链接 {url} HTTP错误: {e.response.status_code}")
             return False
@@ -205,7 +206,7 @@ class TelegramLinkManager:
                 return bool(response_json.get('has_pwd') or response_json.get('file_infos'))
         except httpx.RequestError as e:
             self.logger.error(f"检测阿里云盘链接失败: {e}")
-            return False
+            return True
 
     async def check_115(self, share_id: str):
         api_url = "https://webapi.115.com/share/snap"
@@ -217,7 +218,7 @@ class TelegramLinkManager:
                 return bool(response_json.get('state') or '请输入访问码' in response_json.get('error', ''))
         except httpx.RequestError as e:
             self.logger.error(f"检测115网盘链接失败: {e}")
-            return False
+            return True
 
     async def check_quark(self, share_id: str):
         api_url = "https://drive.quark.cn/1/clouddrive/share/sharepage/token"
@@ -230,7 +231,7 @@ class TelegramLinkManager:
                 return response_json.get('message') == "ok" or response_json.get('message') == "需要提取码"
         except httpx.RequestError as e:
             self.logger.error(f"检测夸克网盘链接失败: {e}")
-            return False
+            return True
 
     async def check_123(self, share_id: str):
         api_url = f"https://www.123pan.com/api/share/info?shareKey={share_id}"
@@ -244,7 +245,7 @@ class TelegramLinkManager:
                 return bool(response_json.get('data', {}).get('HasPwd', False) or response_json.get('code') == 0)
         except (httpx.RequestError, json.JSONDecodeError) as e:
             self.logger.error(f"检测123网盘链接失败: {e}")
-            return False
+            return True
 
     async def check_baidu(self, share_id: str):
         url = f"https://pan.baidu.com/s/{share_id}"
@@ -253,6 +254,8 @@ class TelegramLinkManager:
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, headers=headers, follow_redirects=True)
                 text = response.text
+                if "need verify" in text:
+                    return True
                 if any(x in text for x in ["分享的文件已经被取消", "分享已过期", "你访问的页面不存在"]):
                     return False
                 return bool("请输入提取码" in text or "提取文件" in text or "过期时间" in text)
@@ -273,7 +276,7 @@ class TelegramLinkManager:
                 return True
         except httpx.TimeoutException as e:
             self.logger.error(f"天翼云盘链接 {share_id} 检测超时: {str(e)}")
-            return False
+            return True
         except httpx.HTTPStatusError as e:
             self.logger.error(f"天翼云盘链接 {share_id} HTTP错误: {e.response.status_code}")
             return False
@@ -543,13 +546,24 @@ if __name__ == "__main__":
         "JSON_PATH_NORMAL": os.path.join(os.getcwd(), "messages.json"),
         "JSON_PATH_123": os.path.join(os.getcwd(), "messages_123.json"),
         "TARGET_CHANNEL": "tgsearchers",
-        "PROXY": None, # 
+        "PROXY": None,
         "BATCH_SIZE": 500,
         # 运行配置
-        "DELETE_MODE": 1,  # 1: 检测并删除 (重新检测后再删除), 2: 仅检测, 3: 删除标记为失效的消息
+        "DELETE_MODE": 2,  # 1: 检测并删除 (重新检测后再删除), 2: 仅检测, 3: 删除标记为失效的消息
         "LIMIT": 1000,     # 每次检测的最大消息数量
         "CONCURRENCY": 20, # 并发数
-        "RECHECK": True    # 是否重新检测标记为失效的链接
+        "RECHECK": True,    # 是否重新检测标记为失效的链接
+        "NET_DISK_DOMAINS": 
+        [
+            'pan.quark.cn',
+            # 'aliyundrive.com', 'alipan.com',
+            # '115.com', '115cdn.com', 'anxia.com',
+            # 'pan.baidu.com', 'yun.baidu.com',
+            # 'mypikpak.com',
+            # '123684.com', '123685.com', '123912.com', '123pan.com', '123pan.cn', '123592.com',
+            # 'cloud.189.cn',
+            # 'drive.uc.cn'
+        ]
     }
     
     # 创建管理器实例
