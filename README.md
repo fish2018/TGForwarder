@@ -14,7 +14,7 @@ tgsearch、tgsou需要配置一堆频道群组，完全可以跑个定时任务�
 
 
 ### 信息获取
-在线获取TG session(选择V1)： https://tg.uu8.pro/  
+在线获取TG session(选择V1)： https://tgs.252035.xyz/ 
 
 api_id和api_hash获取：https://my.telegram.org/  
 
