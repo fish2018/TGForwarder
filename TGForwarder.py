@@ -1,5 +1,6 @@
 import os
 import socks
+import shutil
 import requests
 import random
 import time
@@ -120,7 +121,7 @@ class TGForwarder:
                     message = message.replace(word, target_word)
         message = message.strip()
         return message
-    async def dispatch_channel(self, message, jumpLinks=[]):
+    async def dispatch_channel(self, message, jumpLinks=[], F=False):
         hit = False
         if self.channel_match:
             for rule in self.channel_match:
@@ -130,13 +131,13 @@ class TGForwarder:
                 if rule.get('exclude'):
                     if not self.nocontains(message.message, rule['exclude']):
                         continue
-                await self.send(message, rule['target'], jumpLinks)
+                await self.send(message, rule['target'], jumpLinks, F)
                 hit = True
             if not hit:
-                await self.send(message, self.forward_to_channel, jumpLinks)
+                await self.send(message, self.forward_to_channel, jumpLinks, F)
         else:
-            await self.send(message, self.forward_to_channel, jumpLinks)
-    async def send(self, message, target_chat_name, jumpLinks=[]):
+            await self.send(message, self.forward_to_channel, jumpLinks, F)
+    async def send(self, message, target_chat_name, jumpLinks=[], F=False):
         text = message.message
         if jumpLinks and self.hyperlink_text:
             categorized_urls = self.categorize_urls(jumpLinks)
@@ -159,11 +160,15 @@ class TGForwarder:
             return
         try:
             if message.media and isinstance(message.media, MessageMediaPhoto):
-                await self.client.send_message(
-                    target_chat_name,
-                    self.replace_targets(text),  # 复制消息文本
-                    file=message.media  # 复制消息的媒体文件
-                )
+                if F:
+                    media = await message.download_media(self.download_folder)
+                    await self.client.send_file(target_chat_name, media, caption=self.replace_targets(text))
+                else:
+                    await self.client.send_message(
+                        target_chat_name,
+                        self.replace_targets(text),  # 复制消息文本
+                        file=message.media  # 复制消息的媒体文件
+                    )
             else:
                 await self.client.send_message(target_chat_name, self.replace_targets(text))
         except Exception as e:
@@ -517,6 +522,7 @@ class TGForwarder:
         global total
         links = hlinks
         sizes = hsizes
+        F = False
         print(f'当前监控频道【{chat_name}】，本次检测最近【{len(links)}】条历史资源进行去重')
         try:
             chat = None
@@ -529,6 +535,7 @@ class TGForwarder:
                     print(f"检查邀请链接失败: {e}")
             else:
                 chat = await self.client.get_entity(chat_name)
+                F = chat.noforwards
             messages = self.client.iter_messages(chat, limit=limit, reverse=False)
             async for message in self.reverse_async_iter(messages, limit=limit):
                 if self.only_today:
@@ -572,7 +579,7 @@ class TGForwarder:
                         if matches or jumpLinks:
                             link = jumpLinks[0] if jumpLinks else matches[0]
                             if link not in links:
-                                await self.dispatch_channel(message, jumpLinks)
+                                await self.dispatch_channel(message, jumpLinks, F)
                                 total += 1
                                 links.append(link)
                             else:
@@ -623,6 +630,8 @@ class TGForwarder:
     async def main(self):
         start_time = time.time()
         links,sizes = await self.checkhistory()
+        if not os.path.exists(self.download_folder):
+            os.makedirs(self.download_folder)
         for chat_name in self.channels_groups_monitor:
             limit = self.limit
             if '|' in chat_name:
@@ -641,6 +650,8 @@ class TGForwarder:
             self.checkbox['today'] = datetime.now().strftime("%Y-%m-%d")
             f.write(json.dumps(self.checkbox))
         # 调用函数，删除重复链接的旧消息
+        # if os.path.exists(self.download_folder):
+        #     shutil.rmtree(self.download_folder)
         await self.deduplicate_links()
         await self.client.disconnect()
         end_time = time.time()
@@ -720,10 +731,10 @@ class TGForwarder:
 
 
 if __name__ == '__main__':
-    channels_groups_monitor = ['gotopan','xingqiump4','yunpanqk','PanjClub','kkxlzy','xunleizyfb','baicaoZY','MCPH01','share_aliyun','ottpanpan','pan115_share','bdwpzhpd','ysxb48','https://t.me/+rBbwMtzfIes3NjBl','pankuake_share','jdjdn1111','yggpan','yunpanall','MCPH086','zaihuayun','Q66Share',
+    channels_groups_monitor = ['SharePanBaidu','yunpanxunlei','tianyifc','BaiduCloudDisk','txtyzy','peccxinpd','gotopan','xingqiump4','yunpanqk','PanjClub','kkxlzy','baicaoZY','MCPH01','share_aliyun','pan115_share','bdwpzhpd','ysxb48','https://t.me/+rBbwMtzfIes3NjBl','pankuake_share','jdjdn1111','yggpan','yunpanall','MCPH086','zaihuayun','Q66Share',
                                'NewAliPan','Oscar_4Kmovies','ucwpzy','alyp_TV','alyp_4K_Movies','guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan',
                                'hao115', 'yunpanshare', 'dianyingshare', 'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx',
-                               'ucpanpan', 'kuakeyun', 'ucquark','djku123','xx123pan','yingshifenxiang123','zyfb123','pan123pan','tyypzhpd','tianyirigeng']
+                               'kuakeyun', 'ucquark','xx123pan','yingshifenxiang123','zyfb123','pan123pan','tyypzhpd','tianyirigeng']
     forward_to_channel = 'tgsearchers2'
     # 监控最近消息数
     limit = 20
