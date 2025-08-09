@@ -1,7 +1,7 @@
 # TGForwarder
 
 tgsearch、tgsou需要配置一堆频道群组，完全可以跑个定时任务监控这些频道群组，把网盘、磁力资源全都转发到自己的频道，这样只需要配置一个就可以  
-效果参考：https://t.me/s/tgsearchers2  
+效果参考：https://t.me/s/tgsearchers3  
 
 ### 检测删除有风险，自行测试  
 `TGNetDiskLinkChecker.py`脚本用于检测网盘链接有效性，并自动删除链接失效的消息，目前支持 夸克、天翼、阿里云、115、123、百度、UC  
