@@ -731,11 +731,23 @@ class TGForwarder:
 
 
 if __name__ == '__main__':
-    channels_groups_monitor = ['SharePanBaidu','yunpanxunlei','tianyifc','BaiduCloudDisk','txtyzy','peccxinpd','gotopan','xingqiump4','yunpanqk','PanjClub','kkxlzy','baicaoZY','MCPH01','share_aliyun','pan115_share','bdwpzhpd','ysxb48','https://t.me/+rBbwMtzfIes3NjBl','pankuake_share','jdjdn1111','yggpan','yunpanall','MCPH086','zaihuayun','Q66Share',
-                               'NewAliPan','Oscar_4Kmovies','ucwpzy','alyp_TV','alyp_4K_Movies','guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan',
-                               'hao115', 'yunpanshare', 'dianyingshare', 'Quark_Movies', 'XiangxiuNB', 'NewQuark|60', 'ydypzyfx',
-                               'kuakeyun', 'ucquark','xx123pan','yingshifenxiang123','zyfb123','pan123pan','tyypzhpd','tianyirigeng']
-    forward_to_channel = 'tgsearchers2'
+    channels_groups_monitor = [
+        'SharePanBaidu', 'yunpanxunlei', 'tianyifc', 'BaiduCloudDisk', 'txtyzy',
+        'peccxinpd', 'gotopan', 'xingqiump4', 'yunpanqk', 'PanjClub',
+        'kkxlzy', 'baicaoZY', 'MCPH01', 'share_aliyun', 'pan115_share',
+        'bdwpzhpd', 'ysxb48',
+        'jdjdn1111', 'yggpan', 'yunpanall', 'MCPH086', 'zaihuayun', 'Q66Share',
+        'NewAliPan', 'Oscar_4Kmovies', 'ucwpzy', 'alyp_TV', 'alyp_4K_Movies',
+        'guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan', 'hao115',
+        'yunpanshare', 'dianyingshare', 'Quark_Movies', 'XiangxiuNBB', 'NewQuark|60',
+        'ydypzyfx', 'kuakeyun', 'ucquark', 'xx123pan', 'yingshifenxiang123',
+        'zyfb123', 'pan123pan', 'tyypzhpd', 'tianyirigeng', 'cloud189_group',
+        'cloudtianyi', 'hdhhd21', 'Lsp115', 'oneonefivewpfx', 'Maidanglaocom',
+        'qixingzhenren', 'taoxgzy', 'tgsearchers115', 'Channel_Shares_115'
+        'tyysypzypd', 'vip115hot', 'wp123zy', 'yunpan139', 'ysxb69',
+        'yunpan189', 'yunpanuc', 'yydf_hzl', 'alyp_Animation', 'alyp_JLP','yeqingjie_GJG666'
+    ]
+    forward_to_channel = 'tgsearchers3'
     # 监控最近消息数
     limit = 20
     # 监控消息中评论数，有些视频、资源链接被放到评论中
@@ -753,7 +765,7 @@ if __name__ == '__main__':
         "ed2k": ["点击查看","@@"],
         "uc": ["点击查看","@@"],
         "mobile": ["点击查看","@@"],
-        "tianyi": ["点击查看","@@"],
+        "tianyi": ["直达链接","@@"],
         "quark": ["😀 Quark","【夸克网盘】点击获取","夸克云盘","点击查看","@@"],
         "115": ["😀 115","115云盘","点击查看","@@"],
         "aliyun": ["😀 Alipan","【阿里云盘】点击获取","阿里云盘","点击查看","@@"],
@@ -764,20 +776,20 @@ if __name__ == '__main__':
     }
     # 替换消息中关键字(tag/频道/群组)
     replacements = {
-        forward_to_channel: ['xlshare','yunpangroup','pan123pan','juziminmao',"yunpanall","NewAliPan","ucquark", "uckuake", "yunpanshare", "yunpangroup", "Quark_0",
-                             "guaguale115", "Aliyundrive_Share_Channel", "alyd_g", "shareAliyun", "aliyundriveShare",
-                             "hao115", "Mbox115", "NewQuark", "Quark_Share_Group", "QuarkRobot", "memosfanfan_bot",'pankuake_share',
-                             "Quark_Movies", "aliyun_share_bot", "AliYunPanBot","None","大风车","雷锋","热心网友","xx123pan","xx123pan1"],
+        forward_to_channel: ['xlshare','yunpangroup','pan123pan','juziminmao',"yunpanall","NewAliPan","ucquark", "uckuake", "yunpanshare", "yunpangroup", "Quark_0",'ShiShuTiaoA',
+                             "guaguale115", "Aliyundrive_Share_Channel", "alyd_g", "shareAliyun", "aliyundriveShare","yeqinghuibot","yeqingjie_GJG666",'yydf_hzl','share_123pan_bot'
+                             "hao115", "Mbox115", "NewQuark", "Quark_Share_Group", "QuarkRobot", "memosfanfan_bot",'pankuake_share','SharePanBaidu','share_pan','sharepan_bot',
+                             "Quark_Movies", "aliyun_share_bot", "AliYunPanBot","None","大风车","雷锋","热心网友","xx123pan","xx123pan1","share_123pan_bot","🧑🏻‍🚀  订阅同步","🧑🏻‍🚀  订阅直达"],
         "": ['via Hamilton 分享','via 孔 子','🕸源站：https://tv.yydsys.top','via 特别大 爱新觉罗',"🦜投稿", "• ", "🐝", "树洞频道", "云盘投稿", "广告合作", "✈️ 画境频道", "🌐 画境官网", "🎁 详情及下载", " - 影巢", "帮助咨询", "🌈 分享人: 自动发布","分享者：123盘社区","🌥云盘频道 - 📦",
              "🌍： 群主自用机场: 守候网络, 9折活动!", "🔥： 阿里云盘播放神器: VidHub","🔥： 阿里云盘全能播放神器: VidHub","🔥： 移动云盘免流丝滑挂载播放: VidHub", "画境流媒体播放器-免费看奈飞，迪士尼！",'播放神器: VidHub','🔥： https://www.alipan.com/s/2gk164mf2oN',
-             "AIFUN 爱翻 BGP入口极速专线", "AIFUN 爱翻 机场", "from 天翼云盘日更频道","via 匿名","🖼️ 奥斯卡4K蓝光影视站","投稿: 点击投稿","────────────────","【1】需要迅雷云盘链接请进群，我会加入更新",
+             "AIFUN 爱翻 BGP入口极速专线", "AIFUN 爱翻 机场", "from 天翼云盘日更频道","via 匿名","🖼️ 奥斯卡4K蓝光影视站","投稿: 点击投稿","────────────────","【1】需要迅雷云盘链接请进群，我会加入更新", '⚠️ 版权：版权反馈/DMCA','📢 频道 👥 群组 🔍 投稿/搜索',
              "【2】求随手单点频道内容，点赞❤️👍等表情","【3】帮找❗️资源，好片源（别客气）","【4】目前共４个频道，分类内容发布↓","【5】更多请看简介［含™「莫愁片海•拾贝十倍」社群］与🐧/🌏正式群"," - 📌","🚀 频 道: 热剧追更","🔍 群 组: 聚合搜索","💬 公众号: 爱影搜","🌈 分享自: 爱影VIP"]
     }
     # 自定义统计置顶消息，markdown格式
     message_md = (
         "**Github：[https://github.com/fish2018](https://github.com/fish2018)**\n\n"
         "**本频道实时更新最新影视资源并自动清理失效链接(123、夸克、阿里云、天翼、UC、115、移动、磁力、百度、迅雷)**\n\n"
-        "**推荐播放器：[影视](https://t.me/ys_tvb)**\n\n"
+        "**推荐播放器：[影视](https://t.me/ys_tvb)** \n\n"
         "**[PG](https://t.me/pandagroovechat)接口：    [备用](https://cnb.cool/fish2018/pg/-/git/raw/master/jsm.json)   [备用2](http://www.fish2018.ip-ddns.com/p/jsm.json)   [备用3](http://www3.fish2018.ip-ddns.com/p/jsm.json) **"
         "```https://www.252035.xyz/p/jsm.json```"
         "**tgsearch服务器(PG)：    [备用](http://tg.fish2018.ip-ddns.com)    [备用2](http://tg3.fish2018.ip-ddns.com)**"
@@ -786,12 +798,8 @@ if __name__ == '__main__':
         "```https://www.252035.xyz/z/FongMi.json```"
         "**tgsou服务器(真心)：    [备用](http://tgsou.fish2018.ip-ddns.com)    [备用2](http://tgsou3.fish2018.ip-ddns.com)**"
         "```https://tgsou.252035.xyz```"
-        "**在线获取TG Session**"
-        "```https://tgs.252035.xyz```"
-        "**18x接口：    [备用](https://cnb.cool/fish2018/pg/-/git/raw/master/jsm.json-18x)   [备用2](http://www.fish2018.ip-ddns.com/p/jsm.json?pwd=18x)   [备用3](http://www3.fish2018.ip-ddns.com/p/jsm.json?pwd=18x) **"
-        "```https://www.252035.xyz/p/jsm.json?pwd=18x```"
-        "**壁纸接口(18x)：   [备用](http://www.fish2018.ip-ddns.com/imgs)   [备用2](http://www3.fish2018.ip-ddns.com/imgs)    [私藏品鉴](https://t.me/sicangpinjian)**"
-        "```https://www.252035.xyz/imgs```"
+        "**网盘搜索：[盘搜](https://github.com/fish2018/pansou)**"
+        "```https://so.252035.xyz```"
     )
     # 匹配关键字分发到不同频道/群组，不需要分发直接设置channel_match=[]即可
     # channel_match = [
@@ -820,3 +828,8 @@ if __name__ == '__main__':
     # 只允许转发当日的
     only_today = True
     TGForwarder(api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel, limit, replies_limit,include,exclude, check_replies, proxy, checknum, replacements,message_md,channel_match, hyperlink_text, past_years, only_today, try_join).run()
+
+
+
+
+
