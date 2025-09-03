@@ -39,7 +39,6 @@ class TGForwarder:
         self.today_count = 0
         self.history = 'history.json'
         # 正则表达式匹配资源链接
-        # self.pattern = r"(?:链接：\s*)?((?!https?://t\.me)(?:https?://[^\s'】\n]+|magnet:\?xt=urn:btih:[a-zA-Z0-9]+))"
         self.pattern = r'''
             (?:链接：\s*)?                       # 可选的"链接："前缀
             (?!https?://t\.me)                  # 排除电报链接
@@ -89,10 +88,6 @@ class TGForwarder:
         self.download_folder = 'downloads'
         self.try_join = try_join
         self.client = TelegramClient(StringSession(string_session), api_id, api_hash, proxy=proxy)
-        # if not proxy:
-        #     self.client = TelegramClient(StringSession(string_session), api_id, api_hash)
-        # else:
-        #     self.client = TelegramClient(StringSession(string_session), api_id, api_hash, proxy=proxy)
     def random_wait(self, min_ms, max_ms):
         min_sec = min_ms / 1000
         max_sec = max_ms / 1000
@@ -495,6 +490,71 @@ class TGForwarder:
         links = list(set(links))
         sizes = list(set(sizes))
         return links,sizes
+    async def join_channels(self):
+        for channel in channels_groups_monitor:
+            if '|' in channel:
+                channel = channel.split('|')[0]
+            if 'https://t.me/' in channel:
+                # 提取邀请链接中的 hash
+                invite_hash = channel.split("/")[-1].lstrip("+")
+                # 检查邀请链接信息
+                try:
+                    invite = await self.client(CheckChatInviteRequest(invite_hash))
+                except Exception as e:
+                    print(f"检查邀请链接失败: {e}")
+                    return None
+                # 检查是否为 ChatInviteAlready（已加入）
+                if isinstance(invite, ChatInviteAlready):
+                    chat = invite.chat
+                    if isinstance(chat, Channel):
+                        channel_id = chat.id
+                        full_channel_id = f"-100{channel_id}"  # 私有频道 ID 格式
+                        print(f"{channel} 频道名称: {chat.title}, channel_id: {channel_id} 完整 ID: {full_channel_id}")
+                        return full_channel_id
+                    else:
+                        print("chat 对象不是 Channel 类型")
+                        return None
+                # 未加入频道
+                elif isinstance(invite, ChatInvite):
+                    if getattr(invite, "channel", False) and getattr(invite, "broadcast", False):
+                        print(f"未加入的私有频道，标题: {invite.title}")
+                        try:
+                            # 加入频道
+                            result = await self.client(ImportChatInviteRequest(invite_hash))
+                            print(f"加入结果: {result}")
+
+                            # 从加入结果中提取频道信息
+                            if hasattr(result, "chats") and result.chats:
+                                chat = result.chats[0]  # 第一个 chat 对象是目标频道
+                                if isinstance(chat, Channel):
+                                    channel_id = chat.id
+                                    full_channel_id = f"-100{channel_id}"
+                                    print(f"{channel} 频道名称: {chat.title} channel_id: {channel_id} 完整 ID: {full_channel_id}")
+                                    return full_channel_id
+                                else:
+                                    print("加入后未找到 Channel 对象")
+                                    return None
+                            else:
+                                print("加入后未返回频道信息")
+                                return None
+                        except Exception as e:
+                            print(f"加入频道失败: {e}")
+                            return None
+                    else:
+                        print("这不是一个私有频道邀请链接，或无权限")
+                        return None
+                else:
+                    print("尚未加入频道，或返回的不是 ChatInviteAlready")
+                    return None
+            else:
+                try:
+                    await self.client(JoinChannelRequest(channel))
+                    print(f"成功加入频道/群组: {channel}")
+                except Exception as e:
+                    print(f"加入频道/群组失败: {channel}, 错误: {e}")
+    def run_join(self):
+        with self.client.start():
+            self.client.loop.run_until_complete(self.join_channels())
     async def copy_and_send_message(self, source_chat, target_chat, message_id, text=''):
         """
         复制消息内容并发送新消息
@@ -535,8 +595,9 @@ class TGForwarder:
                     print(f"检查邀请链接失败: {e}")
             else:
                 chat = await self.client.get_entity(chat_name)
-                F = chat.noforwards
+            F = chat.noforwards
             messages = self.client.iter_messages(chat, limit=limit, reverse=False)
+
             async for message in self.reverse_async_iter(messages, limit=limit):
                 if self.only_today:
                     # 将消息时间转换为中国时区
@@ -575,7 +636,6 @@ class TGForwarder:
                             print(f'视频已经存在，size: {size}')
                     # 图文(匹配关键词)
                     elif self.contains(message.message, self.include) and message.message and self.nocontains(message.message, self.exclude):
-                        print('bbb',message)
                         jumpLinks = await self.redirect_url(message)
                         matches = re.findall(self.pattern, message.message, re.VERBOSE) if self.contains(message.message, self.urls_kw) else []
                         if matches or jumpLinks:
@@ -661,82 +721,13 @@ class TGForwarder:
                 self.client.loop.run_until_complete(self.join_channels())
             self.client.loop.run_until_complete(self.main())
 
-    async def join_channels(self):
-        for channel in channels_groups_monitor:
-            if '|' in channel:
-                channel = channel.split('|')[0]
-            if 'https://t.me/' in channel:
-                # 提取邀请链接中的 hash
-                invite_hash = channel.split("/")[-1].lstrip("+")
-                # 检查邀请链接信息
-                try:
-                    invite = await self.client(CheckChatInviteRequest(invite_hash))
-                except Exception as e:
-                    print(f"检查邀请链接失败: {e}")
-                    return None
-                # 检查是否为 ChatInviteAlready（已加入）
-                if isinstance(invite, ChatInviteAlready):
-                    chat = invite.chat
-                    if isinstance(chat, Channel):
-                        channel_id = chat.id
-                        full_channel_id = f"-100{channel_id}"  # 私有频道 ID 格式
-                        print(f"{channel} 频道名称: {chat.title}, channel_id: {channel_id} 完整 ID: {full_channel_id}")
-                        return full_channel_id
-                    else:
-                        print("chat 对象不是 Channel 类型")
-                        return None
-                # 未加入频道
-                elif isinstance(invite, ChatInvite):
-                    if getattr(invite, "channel", False) and getattr(invite, "broadcast", False):
-                        print(f"未加入的私有频道，标题: {invite.title}")
-                        try:
-                            # 加入频道
-                            result = await self.client(ImportChatInviteRequest(invite_hash))
-                            print(f"加入结果: {result}")
-
-                            # 从加入结果中提取频道信息
-                            if hasattr(result, "chats") and result.chats:
-                                chat = result.chats[0]  # 第一个 chat 对象是目标频道
-                                if isinstance(chat, Channel):
-                                    channel_id = chat.id
-                                    full_channel_id = f"-100{channel_id}"
-                                    print(f"{channel} 频道名称: {chat.title} channel_id: {channel_id} 完整 ID: {full_channel_id}")
-                                    return full_channel_id
-                                else:
-                                    print("加入后未找到 Channel 对象")
-                                    return None
-                            else:
-                                print("加入后未返回频道信息")
-                                return None
-                        except Exception as e:
-                            print(f"加入频道失败: {e}")
-                            return None
-                    else:
-                        print("这不是一个私有频道邀请链接，或无权限")
-                        return None
-                else:
-                    print("尚未加入频道，或返回的不是 ChatInviteAlready")
-                    return None
-            else:
-                try:
-                    await self.client(JoinChannelRequest(channel))
-                    print(f"成功加入频道/群组: {channel}")
-                except Exception as e:
-                    print(f"加入频道/群组失败: {channel}, 错误: {e}")
-
-    def run_join(self):
-        with self.client.start():
-            self.client.loop.run_until_complete(self.join_channels())
-
-
 if __name__ == '__main__':
     channels_groups_monitor = [
-        'DuanJuQuark|reply_1',
         'SharePanBaidu', 'yunpanxunlei', 'tianyifc', 'BaiduCloudDisk', 'txtyzy',
         'peccxinpd', 'gotopan', 'xingqiump4', 'yunpanqk', 'PanjClub','qixingzhenren',
         'kkxlzy', 'baicaoZY', 'MCPH01', 'share_aliyun', 'pan115_share', 'https://t.me/+P4IU1QbK4ChlNTYx','https://t.me/+cpJ_dIx_hlYxMWQx', 'https://t.me/+1pDtGDqv-bJmYjM1',
         'bdwpzhpd', 'ysxb48', 'sbsbsnsqq', 'yunpanx', 'https://t.me/+fSHARlBjBSNhN2Ix','https://t.me/+h10ulzfxiQZiYTdi','https://t.me/+Jc37JCr1diEzNDMx',
-        'jdjdn1111', 'yggpan', 'yunpanall', 'MCPH086', 'zaihuayun', 'Q66Share',
+        'jdjdn1111', 'yggpan', 'yunpanall', 'MCPH086', 'zaihuayun', 'Q66Share','DuanJuQuark|reply_1',
         'Oscar_4Kmovies', 'ucwpzy', 'alyp_TV', 'alyp_4K_Movies','Aliyun_4K_Movies',
         'guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan', 'hao115','yp123pan',
         'yunpanshare', 'dianyingshare', 'Quark_Movies', 'XiangxiuNBB',
@@ -777,7 +768,7 @@ if __name__ == '__main__':
     replacements = {
         forward_to_channel: ['xlshare','yunpangroup','pan123pan','juziminmao',"yunpanall","NewAliPan","ucquark", "uckuake", "yunpanshare", "yunpangroup", "Quark_0",'ShiShuTiaoA',
                              "guaguale115", "Aliyundrive_Share_Channel", "alyd_g", "shareAliyun", "aliyundriveShare","yeqinghuibot","yeqingjie_GJG666",'yydf_hzl','share_123pan_bot'
-                             "hao115", "Mbox115", "NewQuark", "Quark_Share_Group", "QuarkRobot", "memosfanfan_bot",'pankuake_share','SharePanBaidu','share_pan','sharepan_bot',
+                             "hao115", "Mbox115", "NewQuark", "Quark_Share_Group", "QuarkRobot", "memosfanfan_bot",'pankuake_share','SharePanBaidu','share_pan','sharepan_bot','AQB_gonggao',
                              "Quark_Movies", "aliyun_share_bot", "AliYunPanBot","None","大风车","雷锋","热心网友","xx123pan","xx123pan1","share_123pan_bot","🧑🏻‍🚀  订阅同步","🧑🏻‍🚀  订阅直达"],
         "": ['via Hamilton 分享','via 孔 子','🕸源站：https://tv.yydsys.top','via 特别大 爱新觉罗',"🦜投稿", "• ", "🐝", "树洞频道", "云盘投稿", "广告合作", "✈️ 画境频道", "🌐 画境官网", "🎁 详情及下载", " - 影巢", "帮助咨询", "🌈 分享人: 自动发布","分享者：123盘社区","🌥云盘频道 - 📦",
              "🌍： 群主自用机场: 守候网络, 9折活动!", "🔥： 阿里云盘播放神器: VidHub","🔥： 阿里云盘全能播放神器: VidHub","🔥： 移动云盘免流丝滑挂载播放: VidHub", "画境流媒体播放器-免费看奈飞，迪士尼！",'播放神器: VidHub','🔥： https://www.alipan.com/s/2gk164mf2oN',
@@ -809,9 +800,9 @@ if __name__ == '__main__':
     channel_match = []
     # 尝试加入公共群组频道，无法过验证
     try_join = False
-    # 如果需要监控评论中资源则开启，否则建议关闭(全局)
+    # 如果需要监控评论中资源则开启，否则建议关闭
     check_replies = False
-    # 监控评论数(全局)
+    # 监控评论数
     replies_limit = 1
     # 是否下载图片发送消息
     api_id = 6627460
