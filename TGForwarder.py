@@ -203,7 +203,7 @@ class TGForwarder:
                     break
                 offset_id = replies.messages[-1].id
             except Exception as e:
-                print(f"Unexpected error while fetching replies: {e.__class__.__name__} {e}")
+                print(f"Unexpected error while fetching replies: {chat_name} {e} {message}")
                 break
         return all_replies
     async def daily_forwarded_count(self,target_channel):
@@ -282,6 +282,28 @@ class TGForwarder:
         return unique_matches
     async def redirect_url(self, message):
         links = []
+        if message.entities:
+            for entity in message.entities:
+                if isinstance(entity, MessageEntityTextUrl):
+                    if 'start' in entity.url:
+                        url = await self.tgbot(entity.url)
+                        if url:
+                            links.append(url)
+                    elif 'https://telegra.ph/' in entity.url:
+                        res = requests.get(entity.url)
+                        html = res.content.decode('utf-8')
+                        matches = await self.extract_links(html)
+                        if matches:
+                            links += matches
+                    elif self.nocontains(entity.url, self.urls_kw):
+                        continue
+                    else:
+                        url = urllib.parse.unquote(entity.url)
+                        matches = re.findall(self.pattern, url, re.VERBOSE)
+                        if matches:
+                            links += matches
+        if links:
+            return links
         markup = getattr(message, 'reply_markup', None)
         if markup:
             rows = getattr(markup, 'rows', [])
@@ -306,27 +328,6 @@ class TGForwarder:
                 else:
                     continue
                 break
-        if not markup:
-            if message.entities:
-                for entity in message.entities:
-                    if isinstance(entity, MessageEntityTextUrl):
-                        if 'start' in entity.url:
-                            url = await self.tgbot(entity.url)
-                            if url:
-                                links.append(url)
-                        elif 'https://telegra.ph/' in entity.url:
-                            res = requests.get(entity.url)
-                            html = res.content.decode('utf-8')
-                            matches = await self.extract_links(html)
-                            if matches:
-                                links+=matches
-                        elif self.nocontains(entity.url, self.urls_kw):
-                            continue
-                        else:
-                            url = urllib.parse.unquote(entity.url)
-                            matches = re.findall(self.pattern, url, re.VERBOSE)
-                            if matches:
-                                links+=matches
         return links
     async def send_reply(self,message,chat_name):
         links = []
@@ -335,19 +336,22 @@ class TGForwarder:
         if link:
             links.append(link)
         else:
-            text = re.search(r'\((【\d+】[^)]+)\)', message.message).group(1)
-            from telethon.tl.types import PeerChannel
-            discussion_peer = PeerChannel(message.peer_id.channel_id)
-            await self.client.send_message(discussion_peer, text, comment_to=message.id)
-            # 等待回复
-            await asyncio.sleep(2)
-            async for reply in self.client.iter_messages(discussion_peer, limit=2, reply_to=message.id):
-                    matches = re.findall(self.pattern, reply.message, re.VERBOSE)
-                    if matches:
-                        links = matches
-                        link = links[0]
-                        reply_links[f'{chat_name}-{message.id}'] = link
-                        self.checkbox["reply_links"] = reply_links
+            try:
+                text = re.search(r'\((【\d+】[^)]+)\)', message.message).group(1)
+                from telethon.tl.types import PeerChannel
+                discussion_peer = PeerChannel(message.peer_id.channel_id)
+                await self.client.send_message(discussion_peer, text, comment_to=message.id)
+                # 等待回复
+                await asyncio.sleep(2)
+                async for reply in self.client.iter_messages(discussion_peer, limit=2, reply_to=message.id):
+                        matches = re.findall(self.pattern, reply.message, re.VERBOSE)
+                        if matches:
+                            links = matches
+                            link = links[0]
+                            reply_links[f'{chat_name}-{message.id}'] = link
+                            self.checkbox["reply_links"] = reply_links
+            except Exception as e:
+                print(f'{chat_name} {message.id}: {e}')
         return links
     async def tgbot(self,url):
         link = ''
@@ -624,7 +628,7 @@ class TGForwarder:
                     # 图文(匹配关键词)
                     elif self.contains(message.message, self.include) and message.message and self.nocontains(message.message, self.exclude):
                         jumpLinks = await self.redirect_url(message)
-                        if self.contains(message.message, '💡 评论区评论'):
+                        if not jumpLinks and self.contains(message.message, ['💡 评论区评论']):
                             jumpLinks = await self.send_reply(message,chat_name)
                         matches = re.findall(self.pattern, message.message, re.VERBOSE) if self.contains(message.message, self.urls_kw) else []
                         if matches or jumpLinks:
@@ -654,7 +658,7 @@ class TGForwarder:
                 elif message.message:
                     if self.contains(message.message, self.include) and self.nocontains(message.message, self.exclude):
                         jumpLinks = await self.redirect_url(message)
-                        if self.contains(message.message, '💡 评论区评论'):
+                        if not jumpLinks and self.contains(message.message, ['💡 评论区评论']):
                             jumpLinks = await self.send_reply(message,chat_name)
                         matches = re.findall(self.pattern, message.message, re.VERBOSE) if self.contains(message.message, self.urls_kw) else []
                         if matches or jumpLinks:
@@ -693,19 +697,19 @@ class TGForwarder:
                 links, sizes = await self.forward_messages(chat_name, limit, links, sizes, reply, reply_limit)
             except Exception as e:
                 continue
-        await self.send_daily_forwarded_count()
-        with open(self.history, 'w+', encoding='utf-8') as f:
-            self.checkbox['links'] = list(set(links))[-self.checkbox["today_count"]:]
-            self.checkbox['sizes'] = list(set(sizes))[-self.checkbox["today_count"]:]
-            self.checkbox['today'] = datetime.now().strftime("%Y-%m-%d")
-            f.write(json.dumps(self.checkbox))
-        # 调用函数，删除重复链接的旧消息
-        if os.path.exists(self.download_folder):
-            shutil.rmtree(self.download_folder)
-        await self.deduplicate_links()
-        await self.client.disconnect()
-        end_time = time.time()
-        print(f'耗时: {end_time - start_time} 秒')
+        # await self.send_daily_forwarded_count()
+        # with open(self.history, 'w+', encoding='utf-8') as f:
+        #     self.checkbox['links'] = list(set(links))[-self.checkbox["today_count"]:]
+        #     self.checkbox['sizes'] = list(set(sizes))[-self.checkbox["today_count"]:]
+        #     self.checkbox['today'] = datetime.now().strftime("%Y-%m-%d")
+        #     f.write(json.dumps(self.checkbox))
+        # # 调用函数，删除重复链接的旧消息
+        # if os.path.exists(self.download_folder):
+        #     shutil.rmtree(self.download_folder)
+        # await self.deduplicate_links()
+        # await self.client.disconnect()
+        # end_time = time.time()
+        # print(f'耗时: {end_time - start_time} 秒')
     def run(self):
         with self.client.start():
             if self.try_join:
@@ -784,26 +788,26 @@ if __name__ == '__main__':
     channels_groups_monitor = [
         'SharePanBaidu', 'yunpanxunlei', 'tianyifc', 'BaiduCloudDisk', 'txtyzy',
         'peccxinpd', 'gotopan', 'xingqiump4', 'yunpanqk', 'PanjClub','qixingzhenren',
-        'kkxlzy', 'baicaoZY', 'MCPH01', 'share_aliyun', 'pan115_share', 'https://t.me/+P4IU1QbK4ChlNTYx','https://t.me/+cpJ_dIx_hlYxMWQx', 'https://t.me/+1pDtGDqv-bJmYjM1',
-        'bdwpzhpd', 'ysxb48', 'sbsbsnsqq', 'yunpanx', 'https://t.me/+fSHARlBjBSNhN2Ix','https://t.me/+h10ulzfxiQZiYTdi','https://t.me/+Jc37JCr1diEzNDMx',
+        'kkxlzy', 'baicaoZY', 'MCPH01', 'share_aliyun', 'pan115_share',
+        'bdwpzhpd', 'ysxb48', 'sbsbsnsqq', 'yunpanx',
         'jdjdn1111', 'yggpan', 'yunpanall', 'MCPH086', 'zaihuayun', 'Q66Share','DuanJuQuark|reply_1',
         'Oscar_4Kmovies', 'ucwpzy', 'alyp_TV', 'alyp_4K_Movies','Aliyun_4K_Movies',
         'guaguale115', 'shareAliyun', 'alyp_1', 'yunpanpan', 'hao115','yp123pan',
         'yunpanshare', 'dianyingshare', 'Quark_Movies', 'XiangxiuNBB','jzmm_123pan',
-        'ydypzyfx', 'kuakeyun', 'ucquark', 'xx123pan', 'yingshifenxiang123',
+        'ydypzyfx', 'kuakeyun', 'ucquark', 'yingshifenxiang123',
         'zyfb123', 'pan123pan', 'tyypzhpd', 'tianyirigeng', 'cloud189_group',
-        'cloudtianyi', 'hdhhd21', 'Lsp115', 'oneonefivewpfx', 'Maidanglaocom',
-        'qixingzhenren', 'taoxgzy', 'tgsearchers115', 'Channel_Shares_115','bdbdndn11',
-        'tyysypzypd', 'vip115hot', 'wp123zy', 'yunpan139', 'ysxb69','bsbdbfjfjff',
+        'cloudtianyi', 'hdhhd21', 'Lsp115',
+        'qixingzhenren', 'taoxgzy', 'Channel_Shares_115','bdbdndn11',
+        'tyysypzypd', 'vip115hot', 'wp123zy', 'yunpan139', 'ysxb69',
         'yunpan189', 'yunpanuc', 'yydf_hzl', 'alyp_Animation', 'yeqingjie_GJG666'
     ]
-    forward_to_channel = 'tgsearchers3'
+    forward_to_channel = 'tgsearchers4'
     # 监控最近消息数
     limit = 20
     include = ['链接', '片名', '名称', '剧名', 'ed2k','magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', '123684.com','123685.com','123912.com','123pan.com','123pan.cn','123592.com',
                'pan.quark.cn', '115cdn.com','115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com', '夸克云盘', '阿里云盘', '磁力链接','Alipan','Quark','115','Baidu','获取资源','查看资源','💡 评论区评论']
     exclude = ['小程序', '预告', '预感', '盈利', '即可观看', '书籍', '电子书', '图书', '丛书', '期刊','app','软件', '破解版','解锁','专业版','高级版','最新版','食谱',
-               '免安装', '免广告','安卓', 'Android', '课程', '教程', '教学', '全书', '名著', 'mobi', 'MOBI', 'epub','任天堂','PC','单机游戏',
+               '免安装', '免广告','安卓', 'Android', '课程', '教程', '教学', '全书', '名著', 'mobi', 'MOBI', 'epub','任天堂','PC','单机游戏', '搜素', '色色',
                'pdf', 'PDF', 'PPT', '抽奖', '完整版', '读者','文学', '写作', '节课', '套装', '话术', '纯净版', '日历''txt', 'MP3','网赚',
                'mp3', 'WAV', 'CD', '音乐', '专辑', '模板', '书中', '读物', '入门', '零基础', '常识', '电商', '小红书','JPG','短视频','工作总结',
                '写真','抖音', '资料', '华为', '短剧', '纪录片', '记录片', '纪录', '纪实', '学习', '付费', '小学', '初中','数学', '语文']
@@ -819,7 +823,7 @@ if __name__ == '__main__':
         "115": ["😀 115","115云盘","点击查看","点击转存","115网盘","📥 点击下方按钮获取资源","📢 频道：@Lsp115","@@"],
         "aliyun": ["😀 Alipan","【阿里云盘】点击获取","阿里云盘","点击查看","📥 点击下方按钮获取资源","@@"],
         "pikpak": ["PikPak云盘","点击查看","📥 点击下方按钮获取资源","@@"],
-        "baidu": ["😀 Baidu","【百度网盘】点击获取","百度云盘","点击查看","百度网盘","📥 点击下方按钮获取资源","点击获取百度链接","@@"],
+        "baidu": ["😀 Baidu","【百度网盘】点击获取","百度云盘","点击查看","百度网盘","直达链接","📥 点击下方按钮获取资源","点击获取百度链接","@@"],
         "123": ["点击查看","📥 点击下方按钮获取资源","@@"],
         "others": ["点击查看","📥 点击下方按钮获取资源","@@"],
     }
@@ -869,7 +873,7 @@ if __name__ == '__main__':
     string_session = 'xxx'
     # 默认不开启代理
     proxy = None
-    # proxy = (socks.SOCKS5, '127.0.0.1', 7897)
+    #proxy = (socks.SOCKS5, '127.0.0.1', 7897)
     # 首次检测自己频道最近checknum条消息去重，后续检测累加已转发的消息数，如果当日转发数超过checknum条，则检测当日转发总数
     checknum = 50
     # 允许转发今年之前的资源
