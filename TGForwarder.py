@@ -9,8 +9,8 @@ import re
 import asyncio
 import urllib.parse
 from datetime import datetime, timezone, timedelta
-from telethon import TelegramClient,functions
-from telethon.tl.types import MessageMediaPhoto, MessageEntityTextUrl, Channel, ChatInviteAlready, ChatInvite, PeerChannel
+from telethon import TelegramClient, functions, utils
+from telethon.tl.types import MessageMediaPhoto, MessageEntityTextUrl, ChatInviteAlready, ChatInvite, Channel, Chat
 from telethon.sessions import StringSession
 from telethon.tl.functions.messages import GetHistoryRequest, CheckChatInviteRequest, ImportChatInviteRequest
 from telethon.tl.functions.channels import JoinChannelRequest
@@ -33,7 +33,7 @@ if os.environ.get("HTTP_PROXY"):
 class TGForwarder:
     def __init__(self, api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel,
                  limit, replies_limit, include, exclude, check_replies, proxy, checknum, replacements, message_md, channel_match, hyperlink_text, past_years, only_today, try_join):
-        self.urls_kw = ['ed2k','magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', 'pan.quark.cn', '115cdn.com','115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com','pan.baidu.com','mypikpak.com','123684.com','123685.com','123912.com','123pan.com','123pan.cn','123592.com']
+        self.urls_kw = ['ed2k','magnet', 'drive.uc.cn', 'caiyun.139.com','yun.139.com', 'cloud.189.cn', 'pan.quark.cn', '115cdn.com','115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com','pan.baidu.com','mypikpak.com','123684.com','123685.com','123912.com','123pan.com','123pan.cn','123592.com','guangyapan.com']
         self.checkbox = {"links":[],"sizes":[],"bot_links":{},"reply_links":{},"chat_forward_count_msg_id":{},"today":"","today_count":0}
         self.checknum = checknum
         self.today_count = 0
@@ -441,7 +441,7 @@ class TGForwarder:
             "magnet": ["magnet"],  # 磁力链接
             "ed2k": ["ed2k"], # ed2k
             "uc": ["drive.uc.cn"],  # UC
-            "mobile": ["caiyun.139.com"],  # 移动
+            "mobile": ["caiyun.139.com","yun.139.com"],  # 移动
             "tianyi": ["cloud.189.cn"],  # 天翼
             "quark": ["pan.quark.cn"],  # 夸克
             "115": ["115cdn.com","115.com", "anxia.com"],  # 115
@@ -449,6 +449,7 @@ class TGForwarder:
             "pikpak": ["mypikpak.com"],
             "baidu": ["pan.baidu.com"],
             "123": ['123684.com','123685.com','123912.com','123pan.com','123pan.cn','123592.com'],
+            "guangyapan": ['guangyapan.com'],
             "others": []  # 其他
         }
         # 初始化结果字典
@@ -586,6 +587,10 @@ class TGForwarder:
                     chat = invite.chat
                 except Exception as e:
                     print(f"检查邀请链接失败: {e}")
+            elif chat_name.startswith('-') and chat_name.lstrip('-').isdecimal() and len(chat_name) > 1:
+                chat_id = int(chat_name)
+                chat = await self.client.get_entity(chat_id)
+                print(chat_id, chat.title)
             else:
                 chat = await self.client.get_entity(chat_name)
                 F = chat.noforwards
@@ -716,6 +721,151 @@ class TGForwarder:
                 self.client.loop.run_until_complete(self.join_channels())
             self.client.loop.run_until_complete(self.main())
 
+    # @classmethod
+    # def get_private_chats(cls,keyword=None):
+    #     """
+    #     获取私密群组和频道
+    #     :param keyword: 可选参数，如果传入，则只返回标题包含该关键词的结果
+    #     """
+    #     if keyword:
+    #         print(f"正在获取包含关键词 '{keyword}' 的私密对话列表...\n")
+    #     else:
+    #         print("正在获取所有私密对话列表...\n")
+    #
+    #     # 遍历所有对话
+    #     client = TelegramClient(StringSession(string_session), api_id, api_hash, proxy=proxy)
+    #     with client.start():
+    #         for dialog in client.iter_dialogs():
+    #             entity = dialog.entity
+    #
+    #             # 仅处理群组和频道，彻底排除个人聊天 (User)
+    #             if isinstance(entity, (Channel, Chat)):
+    #                 # 如果没有公开的 username，则是私密群组/频道
+    #                 is_private = getattr(entity, 'username', None) is None
+    #
+    #                 if is_private:
+    #                     dialog_name = dialog.name or "未命名"
+    #
+    #                     # 关键词过滤逻辑（转换为小写以实现忽略大小写的匹配）
+    #                     if keyword and keyword.lower() not in dialog_name.lower():
+    #                         continue
+    #
+    #                     # 细分具体类型以便于区分
+    #                     if isinstance(entity, Chat):
+    #                         chat_type = "私密普通群组 (Basic Group)"
+    #                     elif getattr(entity, 'megagroup', False):
+    #                         chat_type = "私密超级群组 (Supergroup)"
+    #                     elif getattr(entity, 'broadcast', False):
+    #                         chat_type = "私密频道 (Channel)"
+    #                     else:
+    #                         # 兜底情况，绝对不是个人对话，属于 API 边缘状态的群组/频道
+    #                         chat_type = "特殊私密群组/频道"
+    #
+    #                     # 自动获取带正确前缀的负数 ID（例如 -100 开头）
+    #                     real_peer_id = utils.get_peer_id(entity)
+    #
+    #                     print(f"[{chat_type}] {dialog_name}")
+    #                     print(f"ID: {real_peer_id}")
+    #                     print("-" * 40)
+
+    @classmethod
+    def get_private_chats(cls, keyword=None, urls=None):
+        """
+        获取私密群组和频道，或通过邀请链接获取 ID
+        :param keyword: 可选参数，如果传入，则只返回标题包含该关键词的结果
+        :param urls: 可选参数，支持传入单个链接字符串，或包含多个链接的列表
+        """
+        # 创建客户端
+        client = TelegramClient(StringSession(string_session), api_id, api_hash, proxy=proxy)
+
+        async def _run_get_chats():
+            # ================= 模式一：通过 URL 列表批量解析 ID =================
+            if urls:
+                url_list = [urls] if isinstance(urls, str) else urls
+
+                print(f"正在尝试批量解析 {len(url_list)} 个邀请链接...\n")
+
+                for index, url in enumerate(url_list):
+                    print(f"[{index + 1}/{len(url_list)}] 正在解析: {url}")
+                    try:
+                        # 提取 hash
+                        invite_hash = url.split("/")[-1].lstrip("+")
+                        if 'joinchat' in url:
+                            invite_hash = url.split("joinchat/")[-1].strip("/")
+
+                        # 发起请求
+                        invite = await client(CheckChatInviteRequest(invite_hash))
+
+                        if isinstance(invite, ChatInviteAlready):
+                            chat = invite.chat
+                            real_peer_id = utils.get_peer_id(chat)
+
+                            if isinstance(chat, Chat):
+                                chat_type = "私密普通群组 (Basic Group)"
+                            elif getattr(chat, 'megagroup', False):
+                                chat_type = "私密超级群组 (Supergroup)"
+                            elif getattr(chat, 'broadcast', False):
+                                chat_type = "私密频道 (Channel)"
+                            else:
+                                chat_type = "特殊私密群组/频道"
+
+                            print(f"✅ 解析成功（您已加入）")
+                            print(f"[{chat_type}] {chat.title}")
+                            print(f"ID: {real_peer_id}")
+
+                        elif isinstance(invite, ChatInvite):
+                            print(f"⚠️ 您尚未加入该群组/频道！")
+                            print(f"标题: {invite.title}")
+                            print(f"人数: {getattr(invite, 'participants_count', '未知')}")
+                            print(f"【注意】受 API 限制，必须先使用该账号加入才能获取底层 ID。")
+
+                    except Exception as e:
+                        print(f"❌ 解析失败，链接可能已失效或格式错误: {e}")
+
+                    print("-" * 40)
+
+                    # 保护机制：如果不是最后一个链接，休眠 1.5 秒防止触发 Telegram API 频率限制
+                    if index < len(url_list) - 1:
+                        await asyncio.sleep(1.5)
+
+            # ================= 模式二：遍历并通过关键字过滤 =================
+            else:
+                if keyword:
+                    print(f"正在获取包含关键词 '{keyword}' 的私密对话列表...\n")
+                else:
+                    print("正在获取所有私密对话列表...\n")
+
+                async for dialog in client.iter_dialogs():
+                    entity = dialog.entity
+
+                    # 仅处理群组和频道
+                    if isinstance(entity, (Channel, Chat)):
+                        is_private = getattr(entity, 'username', None) is None
+
+                        if is_private:
+                            dialog_name = dialog.name or "未命名"
+
+                            if keyword and keyword.lower() not in dialog_name.lower():
+                                continue
+
+                            if isinstance(entity, Chat):
+                                chat_type = "私密普通群组 (Basic Group)"
+                            elif getattr(entity, 'megagroup', False):
+                                chat_type = "私密超级群组 (Supergroup)"
+                            elif getattr(entity, 'broadcast', False):
+                                chat_type = "私密频道 (Channel)"
+                            else:
+                                chat_type = "特殊私密群组/频道"
+
+                            real_peer_id = utils.get_peer_id(entity)
+
+                            print(f"[{chat_type}] {dialog_name}")
+                            print(f" -> ID: {real_peer_id}")
+                            print("-" * 40)
+
+        with client.start():
+            client.loop.run_until_complete(_run_get_chats())
+
     async def join_channels(self):
         for channel in channels_groups_monitor:
             if '|' in channel:
@@ -785,30 +935,37 @@ class TGForwarder:
 
 
 if __name__ == '__main__':
-    channels_groups_monitor = ['Aliyun_4K_Movies', 'bdbdndn11', 'yunpanx', 'bsbdbfjfjff', 'yp123pan', 'jzmm_123pan',
-                               'sbsbsnsqq', 'yunpanxunlei', 'tianyifc', 'BaiduCloudDisk', 'txtyzy', 'peccxinpd',
-                               'gotopan', 'PanjClub', 'kkxlzy', 'baicaoZY', 'MCPH01', 'MCPH02', 'MCPH03', 'bdwpzhpd',
-                               'ysxb48', 'jdjdn1111', 'yggpan', 'MCPH086', 'zaihuayun', 'Q66Share', 'ucwpzy',
-                               'shareAliyun', 'alyp_1', 'dianyingshare', 'Quark_Movies', 'XiangxiuNBB', 'ydypzyfx',
-                               'ucquark', 'xx123pan', 'yingshifenxiang123', 'zyfb123', 'tyypzhpd', 'tianyirigeng',
-                               'cloudtianyi', 'hdhhd21', 'Lsp115', 'oneonefivewpfx', 'qixingzhenren', 'taoxgzy',
-                               'Channel_Shares_115', 'tyysypzypd', 'vip115hot', 'wp123zy', 'yunpan139', 'yunpan189',
-                               'yunpanuc', 'yydf_hzl', 'leoziyuan', 'pikpakpan', 'Q_dongman', 'yoyokuakeduanju',
-                               'TG654TG', 'WFYSFX02', 'QukanMovie', 'yeqingjie_GJG666', 'movielover8888_film3',
-                               'Baidu_netdisk', 'D_wusun', 'FLMdongtianfudi', 'KaiPanshare', 'QQZYDAPP', 'rjyxfx',
-                               'PikPak_Share_Channel', 'btzhi', 'newproductsourcing', 'cctv1211', 'duan_ju','moviestoshare',
-                               'QuarkFree', 'yunpanNB', 'kkdj001', 'xxzlzn', 'pxyunpanxunlei', 'jxwpzy', 'kuakedongman',
-                               'liangxingzhinan', 'xiangnikanj', 'solidsexydoll', 'guoman4K', 'zdqxm', 'kduanju',
-                               'cilidianying', 'CBduanju', 'SharePanFilms', 'dzsgx', 'BooksRealm', 'Oscar_4Kmovies',
-                               'douerpan', 'baidu_yppan', 'Q_jilupian', 'Netdisk_Movies', 'yunpanquark', 'ammmziyuan',
-                               'https://t.me/+P4IU1QbK4ChlNTYx','https://t.me/+fSHARlBjBSNhN2Ix','https://t.me/+h10ulzfxiQZiYTdi',
-                               'https://t.me/+Jc37JCr1diEzNDMx'
-                               ]
-    forward_to_channel = 'tgsearchers4'
+    channels_groups_monitor = [
+        'Aliyun_4K_Movies', 'BaiduCloudDisk', 'Baidu_netdisk', 'BooksRealm', 'CBduanju',
+        'Channel_Shares_115', 'D_wusun', 'FLMdongtianfudi', 'KaiPanshare', 'Lsp115',
+        'MCPH01', 'MCPH02', 'MCPH03', 'MCPH086', 'Movie888035', 'Netdisk_Movies',
+        'Oscar_4Kmovies', 'PanjClub', 'PikPak_Share_Channel', 'Q66Share', 'QQZYDAPP',
+        'Q_dianying', 'Q_dianshiju', 'Q_dongman', 'Q_jilupian', 'QuarkFree',
+        'Quark_Movies', 'QukanMovie', 'SharePanFilms', 'TG654TG', 'WFYSFX02',
+        'WFYSFX03', 'WPpindao', 'XiangxiuNBB', 'XunLeiPinDao', 'a123fxme',
+        'aliyunys', 'alyp_1', 'ammmziyuan', 'baicaoZY', 'baidu_yppan', 'bdbdndn11',
+        'bdwpzhpd', 'bsbdbfjfjff', 'btzhi', 'cctv1211', 'cili8888', 'cilidianying',
+        'ciliziyuanku', 'clouddriveresources', 'cloudtianyi', 'dianying4k',
+        'dianyingshare', 'domgmingapk', 'douerpan', 'duan_ju', 'dzsgx', 'gimy100',
+        'gimy115', 'gimy115iso', 'godupan', 'gokuapan', 'gotopan', 'guoman4K',
+        'hdhhd21',  'jdjdn1111', 'jxwpzy', 'jzmm_123pan',
+        'kduanju', 'kkdj001', 'kkxlzy', 'kuakedongman', 'kuyupan', 'leoziyuan',
+        'liangxingzhinan', 'movielover8888_film3', 'moviestoshare', 'oneonefivewpfx',
+        'peccxin', 'peccxinpd', 'pikpakpan', 'pxyunpanxunlei', 'q_dianshiju',
+        'qixingzhenren', 'rjyxfx', 'sbsbsnsqq', 'shareAliyun', 'solidsexydoll',
+        'taoxgzy', 'tgbokee', 'tgsearchers6', 'tianyifc', 'tianyirigeng', 'tyypzhpd',
+        'tyysypzypd', 'ucquark', 'ucshare', 'ucwpzy', 'vip115hot', 'wp123zy','yingshiziyuanpindao',
+        'wydwpzy', 'xiangnikanj', 'xlwpzy', 'xx123pan', 'xxzlzn', 'ydwpzy','djya5', 'pan_guangya'
+        'ydypzyfx', 'yeqingjie_GJG666', 'yggpan', 'yingshifenxiang123', 'yoyokuakeduanju',
+        'yp123pan', 'yydf_hzl', 'yunpan139', 'yunpan189', 'yunpanNB', 'yunpanquark',
+        'yunpanuc', 'yunpanx', 'yunpanxunlei', 'zaihuayun', 'zdqxm', 'zyfb123', 'zyywpzy',
+        '-1002789097359', '-1002726412745', '-1002605109003', '-1002563574998', '-1002023050367', '-1002054107535',
+    ]
+    forward_to_channel = 'tgsearchers6'
     # 监控最近消息数
     limit = 20
-    include = ['链接', '片名', '名称', '剧名', 'ed2k','magnet', 'drive.uc.cn', 'caiyun.139.com', 'cloud.189.cn', '123684.com','123865.com','123912.com','123pan.com','123pan.cn','123592.com',
-               'pan.quark.cn', '115cdn.com','115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com', '夸克云盘', '阿里云盘', '磁力链接','Alipan','Quark','115','Baidu','获取资源','查看资源','💡 评论区评论','直达链接']
+    include = ['链接', '片名', '名称', '剧名', 'ed2k','magnet', 'drive.uc.cn', 'caiyun.139.com','yun.139.com', 'cloud.189.cn', '123684.com','123865.com','123912.com','123pan.com','123pan.cn','123592.com','📥 转存到pikpak 📥',
+               'pan.quark.cn', '115cdn.com','115.com', 'anxia.com', 'alipan.com', 'aliyundrive.com','mypikpak.com', '夸克云盘', '阿里云盘', '磁力链接','Alipan','Quark','115','Baidu','获取资源','查看资源','💡 评论区评论']
     exclude = ['小程序', '预告', '预感', '盈利', '即可观看', '书籍', '电子书', '图书', '丛书', '期刊','app','软件', '破解版','解锁','专业版','高级版','最新版','食谱',
                '免安装', '免广告','安卓', 'Android', '课程', '教程', '教学', '全书', '名著', 'mobi', 'MOBI', 'epub','任天堂','PC','单机游戏', '搜素', '色色',
                'pdf', 'PDF', 'PPT', '抽奖', '完整版', '读者','文学', '写作', '节课', '套装', '话术', '纯净版', '日历''txt', 'MP3','网赚',
@@ -823,9 +980,9 @@ if __name__ == '__main__':
         "tianyi": ["直达链接","📥 点击下方按钮获取资源","💡 评论区评论","@@"],
         "xunlei": ["点击获取迅雷链接","直达链接","迅雷网盘","📥 点击下方按钮获取资源","@@"],
         "quark": ["点击获取夸克链接","😀 Quark","【夸克网盘】点击获取","夸克云盘","点击查看","夸克网盘","📥 点击下方按钮获取资源","@@"],
-        "115": ["😀 115","115云盘","点击查看","点击转存","115网盘","📥 点击下方按钮获取资源","📢 频道：@Lsp115","@@"],
+        "115": ["😀 115","115云盘","点击查看","点击转存","点击跳转","115网盘","📥 点击下方按钮获取资源","📢 频道：@Lsp115","@@"],
         "aliyun": ["点击获取阿里云盘链接","😀 Alipan","【阿里云盘】点击获取","阿里云盘","点击查看","📥 点击下方按钮获取资源","@@"],
-        "pikpak": ["PikPak云盘","点击查看","📥 点击下方按钮获取资源","@@"],
+        "pikpak": ["PikPak云盘","点击查看","📥 转存到pikpak 📥","📥 点击下方按钮获取资源","@@"],
         "baidu": ["点击获取百度链接","😀 Baidu","【百度网盘】点击获取","百度云盘","点击查看","百度网盘","直达链接","📥 点击下方按钮获取资源","@@"],
         "123": ["点击查看","📥 点击下方按钮获取资源","@@"],
         "others": ["点击查看","📥 点击下方按钮获取资源","@@"],
@@ -833,18 +990,19 @@ if __name__ == '__main__':
     # 替换消息中关键字(tag/频道/群组)
     replacements = {
         forward_to_channel: ['xlshare','yunpangroup','pan123pan','juziminmao',"yunpanall","NewAliPan","ucquark", "uckuake", "yunpanshare", "yunpangroup", "Quark_0",'ShiShuTiaoA','Oscar_4Kmovies','Oscarono','leoziyuan','leopansou','leipanbot','LEO网盘搜集',
-                             "guaguale115", "Aliyundrive_Share_Channel", "alyd_g", "shareAliyun", "aliyundriveShare","yeqinghuibot","yeqingjie_GJG666",'yydf_hzl','share_123pan_bot','tpbox_bot','sougou115',
-                             "hao115", "Mbox115", "NewQuark", "Quark_Share_Group", "QuarkRobot", "memosfanfan_bot",'pankuake_share','SharePanBaidu','share_pan','sharepan_bot','Aliyun_4K_Movies','Netdisk_Movies',
+                             "guaguale115", "Aliyundrive_Share_Channel", "alyd_g", "shareAliyun", "aliyundriveShare","yeqinghuibot","yeqingjie_GJG666",'yydf_hzl','share_123pan_bot','tpbox_bot','sougou115', 'https://t.me/+kFd9tH23gbkzZGIy',
+                             "hao115", "Mbox115", "NewQuark", "Quark_Share_Group", "QuarkRobot", "memosfanfan_bot",'pankuake_share','SharePanBaidu','share_pan','sharepan_bot','Aliyun_4K_Movies','Netdisk_Movies','djya5','QNrvfp',
                              "Quark_Movies", "aliyun_share_bot", "AliYunPanBot","None","大风车","雷锋","热心网友","xx123pan","xx123pan1","share_123pan_bot","🧑🏻‍🚀  订阅同步","🧑🏻‍🚀  订阅直达"],
-        "": ['via Hamilton 分享','via 孔 子','🕸源站：https://tv.yydsys.top','via 特别大 爱新觉罗',"🦜投稿", "• ", "🐝", "树洞频道", "云盘投稿", "广告合作", "✈️ 画境频道", "🌐 画境官网", "🎁 详情及下载", " - 影巢", "帮助咨询", "🌈 分享人: 自动发布","分享者：123盘社区","🌥云盘频道 - 📦",'频道｜投稿｜合作',
-             "🌍： 群主自用机场: 守候网络, 9折活动!", "🔥： 阿里云盘播放神器: VidHub","🔥： 阿里云盘全能播放神器: VidHub","🔥： 移动云盘免流丝滑挂载播放: VidHub", "画境流媒体播放器-免费看奈飞，迪士尼！",'播放神器: VidHub','🔥： https://www.alipan.com/s/2gk164mf2oN','via 🤖編號 9527','via o o o o o',
-             "AIFUN 爱翻 BGP入口极速专线", "AIFUN 爱翻 机场", "from 天翼云盘日更频道","via 匿名","🖼️ 奥斯卡4K蓝光影视站","投稿: 点击投稿","────────────────","【1】需要迅雷云盘链接请进群，我会加入更新", '⚠️ 版权：版权反馈/DMCA','📢 频道 👥 群组 🔍 投稿/搜索','✈️ 机场：红杏云 糖果云','即可获取资源，括号内名称点击可复制📋',
+        "": ['▶️ 在线观看online ▶️','via Hamilton 分享','via 孔 子','🕸源站：https://tv.yydsys.top','via 特别大 爱新觉罗',"🦜投稿", "• ", "🐝", "树洞频道", "云盘投稿", "广告合作", "✈️ 画境频道", "🌐 画境官网", "🎁 详情及下载", " - 影巢", "帮助咨询", "🌈 分享人: 自动发布","分享者：123盘社区","🌥云盘频道 - 📦",'频道｜投稿｜合作',
+             "🌍： 群主自用机场: 守候网络, 9折活动!", "🔥： 阿里云盘播放神器: VidHub","🔥： 阿里云盘全能播放神器: VidHub","🔥： 移动云盘免流丝滑挂载播放: VidHub", "画境流媒体播放器-免费看奈飞，迪士尼！",'播放神器: VidHub','🔥： https://www.alipan.com/s/2gk164mf2oN','via 🤖編號 9527','via o o o o o','⬇️【评论区可搜索】 | 🔍网盘专搜',
+             "AIFUN 爱翻 BGP入口极速专线", "AIFUN 爱翻 机场", "from 天翼云盘日更频道","via 匿名","🖼️ 奥斯卡4K蓝光影视站","投稿: 点击投稿","────────────────","【1】需要迅雷云盘链接请进群，我会加入更新", '⚠️ 版权：版权反馈/DMCA','📢 频道 👥 群组 🔍 投稿/搜索','✈️ 机场：红杏云 糖果云','即可获取资源，括号内名称点击可复制📋','👑开通VIP👑',
              "【2】求随手单点频道内容，点赞❤️👍等表情","【3】帮找❗️资源，好片源（别客气）","【4】目前共４个频道，分类内容发布↓","【5】更多请看简介［含™「莫愁片海•拾贝十倍」社群］与🐧/🌏正式群"," - 📌","🚀 频 道: 热剧追更","🔍 群 组: 聚合搜索","💬 公众号: 爱影搜","🌈 分享自: 爱影VIP"]
     }
     # 自定义统计置顶消息，markdown格式
     message_md = (
         "**Github：[https://github.com/fish2018](https://github.com/fish2018)**\n\n"
         "**本频道实时更新最新影视资源并自动清理失效链接(123、夸克、阿里云、天翼、UC、115、移动、磁力、百度、迅雷)**\n\n"
+        "**手机动态壁纸APP：[Aura](https://github.com/fish2018/Aura)**\n\n"
         "**推荐播放器：[影视](https://t.me/ys_tvb)** \t\t**网盘搜索：[盘搜](https://github.com/fish2018/pansou)**\n\n"
         "**[PG](https://t.me/pandagroovechat)接口：    [备用](https://cnb.cool/fish2018/pg/-/git/raw/master/jsm.json)   [备用2](http://www.fish2018.ip-ddns.com/p/jsm.json)   [备用3](http://www3.fish2018.ip-ddns.com/p/jsm.json) **"
         "```https://www.252035.xyz/p/jsm.json```"
@@ -873,7 +1031,8 @@ if __name__ == '__main__':
     # 是否下载图片发送消息
     api_id = 6627460
     api_hash = '27a53a0965e486a2bc1b1fcde473b1c4'
-    string_session = 'xxx'
+    string_session = 'xxxx'
+
     # 默认不开启代理
     proxy = None
     # proxy = (socks.SOCKS5, '127.0.0.1', 7897)
@@ -883,11 +1042,8 @@ if __name__ == '__main__':
     past_years = False
     # 只允许转发当日的
     only_today = True
+    # 获取私密频道/群组ID，keyword可选，当使用urls时仅用来转换为ID
+    # TGForwarder.get_private_chats(keyword="BT之家btzhi最新电影发布频道")
+    # TGForwarder.get_private_chats(urls=['https://t.me/+DMmpC2e6FaM5NTdl', 'https://t.me/+Jc37JCr1diEzNDMx','https://t.me/+P4IU1QbK4ChlNTYx', 'https://t.me/+fSHARlBjBSNhN2Ix','https://t.me/+h10ulzfxiQZiYTdi'])
     TGForwarder(api_id, api_hash, string_session, channels_groups_monitor, forward_to_channel, limit, replies_limit,include,exclude, check_replies, proxy, checknum, replacements,message_md,channel_match, hyperlink_text, past_years, only_today, try_join).run()
-
-
-
-
-
-
 
